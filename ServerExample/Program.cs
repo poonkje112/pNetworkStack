@@ -20,8 +20,7 @@ namespace ServerExample
 				
 				Server.GetCurrent().SendRPC(null, message);
 			}
-
-
+			
 			Console.ReadLine();
 		}
 

@@ -1,6 +1,6 @@
 namespace pNetworkStack.Core
 {
-	public class Util
+	public static class Util
 	{
 		public static string Join(char seperator, string[] data)
 		{

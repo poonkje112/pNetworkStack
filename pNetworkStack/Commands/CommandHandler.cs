@@ -7,13 +7,13 @@ namespace pNetworkStack.Commands
 {
 	public class CommandHandler
 	{
-		static CommandHandler Instance;
-		Dictionary<string, MethodInfo> m_ServerCommands = new Dictionary<string, MethodInfo>();
-		Dictionary<string, MethodInfo> m_ClientCommands = new Dictionary<string, MethodInfo>();
+		private static CommandHandler Instance;
+		private Dictionary<string, MethodInfo> m_ServerCommands = new Dictionary<string, MethodInfo>();
+		private Dictionary<string, MethodInfo> m_ClientCommands = new Dictionary<string, MethodInfo>();
 
 		private CommandHandler()
 		{
-			IEnumerable<MethodInfo> serverCommandsEnum = GetMethodsWithAttribute(AppDomain.CurrentDomain.GetAssemblies().GetType(), typeof(ServerCommand));
+			IEnumerable<MethodInfo> serverCommandsEnum = GetMethodsWithAttribute(typeof(ServerCommand));
 
 			foreach (MethodInfo methodInfo in serverCommandsEnum)
 			{
@@ -21,7 +21,7 @@ namespace pNetworkStack.Commands
 				m_ServerCommands.Add(serverCommand.GetCommand(), methodInfo);
 			}
 			
-			IEnumerable<MethodInfo> clientCommandsEnum = GetMethodsWithAttribute(AppDomain.CurrentDomain.GetAssemblies().GetType(), typeof(ClientCommand));
+			IEnumerable<MethodInfo> clientCommandsEnum = GetMethodsWithAttribute(typeof(ClientCommand));
 			foreach (MethodInfo methodInfo in clientCommandsEnum)
 			{
 				ClientCommand clientCommand = (ClientCommand)methodInfo.GetCustomAttribute(typeof(ClientCommand));
@@ -29,30 +29,36 @@ namespace pNetworkStack.Commands
 			}
 		}
 
+		/// <summary>
+		/// Get an instance of the CommandHandler
+		/// </summary>
+		/// <returns>An active instance of the CommandHandler</returns>
 		public static CommandHandler GetHandler()
 		{
 			return Instance ?? (Instance = new CommandHandler());
 		}
 
-		public bool ExecuteServerCommand(string command)
-		{
-			return ExecuteServerCommand(command, null);
-		}
-
-		public bool ExecuteServerCommand(string command, object[] args)
+		/// <summary>
+		/// Execute a server registered command using the [ServerCommand(commandName)] Attribute
+		/// </summary>
+		/// <param name="command">The command that you want to use</param>
+		/// <param name="args">The parameters that come with it</param>
+		/// <returns>If the command was found and executed</returns>
+		public bool ExecuteServerCommand(string command, object[] args = null)
 		{
 			if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null) return false;
 
 			m_ServerCommands[command].Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
 			return true;
 		}
-		
-		public bool ExecuteClientCommand(string command)
-		{
-			return ExecuteClientCommand(command, null);
-		}
 
-		public bool ExecuteClientCommand(string command, object[] args)
+		/// <summary>
+		/// Execute a client registered command using the [ClientCommand(commandName)] Attribute
+		/// </summary>
+		/// <param name="command">The command that you want to use</param>
+		/// <param name="args">The parameters that come with it</param>
+		/// <returns>If the command was found and executed</returns>
+		public bool ExecuteClientCommand(string command, object[] args = null)
 		{
 			if (!m_ClientCommands.ContainsKey(command) || m_ClientCommands[command].DeclaringType == null) return false;
 
@@ -60,7 +66,12 @@ namespace pNetworkStack.Commands
 			return true;
 		}
 		
-		private IEnumerable<MethodInfo> GetMethodsWithAttribute(Type classType, Type attributeType)
+		/// <summary>
+		/// Get all methods registered with the specified attribute
+		/// </summary>
+		/// <param name="attributeType">The attribute you want to find</param>
+		/// <returns>IEnumerable of all methods with the specified attribute</returns>
+		private IEnumerable<MethodInfo> GetMethodsWithAttribute(Type attributeType)
 		{
 			IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies() // Returns all currenlty loaded assemblies
 				.SelectMany(x => x.GetTypes()) // returns all types defined in this assemblies

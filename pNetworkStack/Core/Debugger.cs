@@ -4,28 +4,28 @@ namespace pNetworkStack.Core
 {
 	internal enum LogType
 	{
-		info,
-		warning,
-		error
+		Info,
+		Warning,
+		Error
 	}
 
-	public class Debugger
+	public static class Debugger
 	{
 		public static Action<string> OnInfo, OnWarning, OnError;
 
-		internal static void Log(string msg, LogType type = LogType.info)
+		internal static void Log(string msg, LogType type = LogType.Info)
 		{
 			switch (type)
 			{
-				case LogType.info:
+				case LogType.Info:
 					OnInfo?.Invoke(msg);
 					break;
 
-				case LogType.warning:
+				case LogType.Warning:
 					OnWarning?.Invoke(msg);
 					break;
 
-				case LogType.error:
+				case LogType.Error:
 					OnError?.Invoke(msg);
 					break;
 			}

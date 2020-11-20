@@ -29,7 +29,7 @@ namespace pNetworkStack.client
 			}
 			catch (SocketException e)
 			{
-				Debugger.Log(e.Message, LogType.error);
+				Debugger.Log(e.Message, LogType.Error);
 				return;
 			}
 
@@ -52,14 +52,12 @@ namespace pNetworkStack.client
 			}
 			catch (Exception e)
 			{
-				Debugger.Log(e.Message, LogType.error);
+				Debugger.Log(e.Message, LogType.Error);
 			}
 		}
 
 		private void ReceiveCallback(IAsyncResult ar)
 		{
-			string content = string.Empty;
-
 			// Retrieve our ClientData from our async object
 			ClientData data = (ClientData) ar.AsyncState;
 			Socket handler = data.WorkClient;
@@ -74,7 +72,7 @@ namespace pNetworkStack.client
 				data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
 
 				// Check if we have reached the end
-				content = data.Builder.ToString();
+				string content = data.Builder.ToString();
 				if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 				{
 					//TODO Remove this

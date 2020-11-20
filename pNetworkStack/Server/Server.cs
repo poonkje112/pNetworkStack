@@ -86,8 +86,6 @@ namespace pNetworkStack.Server
 
 		private void ReadCallback(IAsyncResult ar)
 		{
-			string content = string.Empty;
-
 			// Retrieve our ClientData from our async object
 			ClientData data = (ClientData) ar.AsyncState;
 			Socket handler = data.WorkClient;
@@ -102,7 +100,7 @@ namespace pNetworkStack.Server
 				data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
 
 				// Check if we have reached the end
-				content = data.Builder.ToString();
+				string content = data.Builder.ToString();
 				if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 				{
 					//TODO Remove this

@@ -7,7 +7,7 @@ namespace pNetworkStack.Core.Data
 	public struct BaseData
 	{
 		public string DisplayName;
-		public pVector Postition;
+		public pVector Position;
 		public pVector EulerAngle;
 		public string UID;
 	}
@@ -22,7 +22,7 @@ namespace pNetworkStack.Core.Data
 
 		public void UpdatePosition(pVector pos)
 		{
-			Base.Postition = pos;
+			Base.Position = pos;
 		}
 
 		public void UpdateEuler(pVector euler)
