@@ -109,16 +109,11 @@ namespace pNetworkStack.Server
 					// Clear the buffer and builder to prepare for new data
 					data.Buffer = new byte[ClientData.BufferSize];
 					data.Builder.Clear();
-
-					// Start receiving new data
-					handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
-				}
-				else
-				{
-					// Not all data has been received, get more data.
-					handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 				}
 			}
+			
+			// Start receiving again
+			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 		}
 
 		public void Send(Socket handler, string message)

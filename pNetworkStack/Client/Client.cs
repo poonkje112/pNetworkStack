@@ -81,21 +81,11 @@ namespace pNetworkStack.client
 					// Clear the buffer and builder to prepare for new data
 					data.Buffer = new byte[ClientData.BufferSize];
 					data.Builder.Clear();
+				}
+			}
 
-					// Start receiving new data
-					handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
-				}
-				else
-				{
-					// Not all data has been received, get more data.
-					handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
-				}
-			}
-			else
-			{
-				// Start receiving again
-				handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
-			}
+			// Start receiving again
+			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
 		}
 
 		/// <summary>
