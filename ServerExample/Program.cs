@@ -6,8 +6,6 @@ namespace ServerExample
 {
 	class Program
 	{
-		static int count = 0;
-
 		static void Main(string[] args)
 		{
 			InitializeDebugger();
@@ -16,13 +14,11 @@ namespace ServerExample
 
 			while (server.IsRunning)
 			{
-				string cmd = Console.ReadLine();
-				if (Server.GetCurrent() == null)
-				{
-					Console.WriteLine("ERROR!");
-					continue;
-				}
-				Server.GetCurrent().SendRPC(null, cmd);
+				string message = Console.ReadLine();
+				
+				if(string.IsNullOrEmpty(message)) continue;
+				
+				Server.GetCurrent().SendRPC(null, message);
 			}
 
 

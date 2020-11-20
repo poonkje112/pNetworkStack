@@ -15,6 +15,9 @@ namespace ClientExample
 			while (client.IsConnected)
 			{
 				string message = Console.ReadLine();
+				
+				if(string.IsNullOrEmpty(message)) continue;
+				
 				Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - 1);
 				client.Send(message);
 				
