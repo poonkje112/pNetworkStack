@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
@@ -11,7 +12,7 @@ namespace pNetworkStack.Server
 	public class Server
 	{
 		//TODO Parse the received data to the CommandHandler
-		
+
 		private static Server Instance;
 
 		// All server/client commands gets handled here
@@ -19,9 +20,9 @@ namespace pNetworkStack.Server
 
 		// Our state to check if the server is running or not
 		private bool m_IsRunning;
-		
+
 		private List<ClientData> m_Clients = new List<ClientData>();
-		
+
 		/// <summary>
 		/// Creates and starts a server on the specified port
 		/// </summary>
@@ -47,19 +48,19 @@ namespace pNetworkStack.Server
 			if (Instance == null)
 			{
 				Debugger.Log("Starting server...");
-				
+
 				// Start listening
 				TcpListener listener = new TcpListener(System.Net.IPAddress.Any, port);
 				listener.Start();
-				
+
 				// Set the running state to true
 				m_IsRunning = true;
-				
+
 				// Get an instance of the CommandHandler
 				m_CommandHandler = CommandHandler.GetHandler();
 
 				Debugger.Log($"Server started on: {System.Net.IPAddress.Any}:{port}");
-				
+
 				// Wait for a new TcpClient
 				listener.BeginAcceptSocket(AcceptClient, listener);
 			}
@@ -67,7 +68,7 @@ namespace pNetworkStack.Server
 
 		private void AcceptClient(IAsyncResult ar)
 		{
-			// Gets the TcpClient that handles the requests
+			// Gets the socket that handles the requests
 			TcpListener listener = (TcpListener) ar.AsyncState;
 			Socket handler = listener.EndAcceptSocket(ar);
 
@@ -79,7 +80,7 @@ namespace pNetworkStack.Server
 
 			// Start receiving data
 			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
-			
+
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
 		}
@@ -103,15 +104,19 @@ namespace pNetworkStack.Server
 				string content = data.Builder.ToString();
 				if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 				{
-					//TODO Remove this
-					Debugger.Log($"Received:\n{content.Replace("<EOF>", "")}");
+					// Parse the command to the parser
+					Util.ParseCommand(handler, content.Replace("<EOF>", ""),
+						(command, parameters) =>
+						{
+							CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
+						});
 
 					// Clear the buffer and builder to prepare for new data
 					data.Buffer = new byte[ClientData.BufferSize];
 					data.Builder.Clear();
 				}
 			}
-			
+
 			// Start receiving again
 			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 		}
@@ -128,7 +133,7 @@ namespace pNetworkStack.Server
 			handler.Send(data, 0, data.Length, 0);
 		}
 
-		
+
 		/// <summary>
 		/// Sends a message to all connected clients
 		/// </summary>
@@ -140,7 +145,7 @@ namespace pNetworkStack.Server
 			{
 				// Get the socket of the receiving end
 				Socket receiver = client.WorkClient;
-				
+
 				// Check if the receiver and the sender are the same
 				if (sender != null && receiver == sender) continue;
 

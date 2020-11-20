@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
 
@@ -75,8 +76,12 @@ namespace pNetworkStack.client
 				string content = data.Builder.ToString();
 				if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 				{
-					//TODO Remove this
-					Debugger.Log($"Received:\n{content.Replace("<EOF>", "")}");
+					// Parse the command to the parser
+					Util.ParseCommand(content.Replace("<EOF>", ""),
+						(command, parameters) =>
+						{
+							CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
+						});
 
 					// Clear the buffer and builder to prepare for new data
 					data.Buffer = new byte[ClientData.BufferSize];
