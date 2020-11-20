@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using pNetworkStack.client;
 using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
@@ -11,8 +13,6 @@ namespace pNetworkStack.Server
 {
 	public class Server
 	{
-		//TODO Parse the received data to the CommandHandler
-
 		private static Server Instance;
 
 		// All server/client commands gets handled here
@@ -21,7 +21,7 @@ namespace pNetworkStack.Server
 		// Our state to check if the server is running or not
 		private bool m_IsRunning;
 
-		private List<ClientData> m_Clients = new List<ClientData>();
+		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
 
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -70,16 +70,34 @@ namespace pNetworkStack.Server
 		{
 			// Gets the socket that handles the requests
 			TcpListener listener = (TcpListener) ar.AsyncState;
-			Socket handler = listener.EndAcceptSocket(ar);
+			Socket client = listener.EndAcceptSocket(ar);
 
 			// Save the client data for async use
 			ClientData data = new ClientData();
-			data.WorkClient = handler;
+			data.WorkClient = client;
 
-			m_Clients.Add(data);
+			// Generating a new random user id
+			Random rand = new Random();
+			string randomUID = rand.Next(100000, 999999).ToString();
+
+			while (Clients.ContainsKey(randomUID))
+			{
+				randomUID = rand.Next(100000, 999999).ToString();
+			}
+
+			// Set the user id
+			data.UserData = new User()
+			{
+				UUID = randomUID
+			};
 
 			// Start receiving data
-			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+
+			Send(client, $"pl_init {randomUID}");
+
+			// Add the player to our list
+			Clients.Add(randomUID, data);
 
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
@@ -89,36 +107,50 @@ namespace pNetworkStack.Server
 		{
 			// Retrieve our ClientData from our async object
 			ClientData data = (ClientData) ar.AsyncState;
-			Socket handler = data.WorkClient;
 
-			// Get the amount of data
-			int bytesToRead = handler.EndReceive(ar);
-
-			// Check if there is any data to process
-			if (bytesToRead > 0)
+			try
 			{
-				// Apply the received data to the string builder
-				data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
+				Socket handler = data.WorkClient;
 
-				// Check if we have reached the end
-				string content = data.Builder.ToString();
-				if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+				// Get the amount of data
+				int bytesToRead = handler.EndReceive(ar);
+
+				// Check if there is any data to process
+				if (bytesToRead > 0)
 				{
-					// Parse the command to the parser
-					Util.ParseCommand(handler, content.Replace("<EOF>", ""),
-						(command, parameters) =>
-						{
-							CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
-						});
+					// Apply the received data to the string builder
+					data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
 
-					// Clear the buffer and builder to prepare for new data
-					data.Buffer = new byte[ClientData.BufferSize];
-					data.Builder.Clear();
+					// Check if we have reached the end
+					string content = data.Builder.ToString();
+					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+					{
+						// Parse the command to the parser
+						Util.ParseCommand(handler, content.Replace("<EOF>", ""),
+							(command, parameters) =>
+							{
+								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
+							});
+
+						// Clear the buffer and builder to prepare for new data
+						data.Buffer = new byte[ClientData.BufferSize];
+						data.Builder.Clear();
+					}
 				}
-			}
 
-			// Start receiving again
-			handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+				// Start receiving again
+				handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+			}
+			catch (SocketException e)
+			{
+				// Tell all clients this user has disconnected
+				SendRPC(data.WorkClient, $"pl_remove {data.UserData.UUID}");
+
+				// Assume the client has lost connection
+				Clients.Remove(data.UserData.UUID);
+
+				//TODO Send an RPC that this client has disconnected
+			}
 		}
 
 		public void Send(Socket handler, string message)
@@ -141,7 +173,7 @@ namespace pNetworkStack.Server
 		/// <param name="message">The message</param>
 		public void SendRPC(Socket sender, string message)
 		{
-			foreach (ClientData client in m_Clients)
+			foreach (ClientData client in Clients.Values)
 			{
 				// Get the socket of the receiving end
 				Socket receiver = client.WorkClient;
@@ -153,10 +185,20 @@ namespace pNetworkStack.Server
 				Send(receiver, message);
 			}
 		}
+		
+		public void DisconnectClient(string uid)
+		{
+			ClientData sender = Clients[uid];
+
+			SendRPC(sender.WorkClient, $"pl_remove {uid}");
+
+			Clients.Remove(uid);
+		}
 
 		public bool IsRunning
 		{
 			get => m_IsRunning;
 		}
+
 	}
 }
