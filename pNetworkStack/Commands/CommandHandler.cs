@@ -7,9 +7,9 @@ namespace pNetworkStack.Commands
 {
 	public class CommandHandler
 	{
-		static CommandHandler _Instance;
-		Dictionary<string, MethodInfo> _ServerCommands = new Dictionary<string, MethodInfo>();
-		Dictionary<string, MethodInfo> _ClientCommands = new Dictionary<string, MethodInfo>();
+		static CommandHandler Instance;
+		Dictionary<string, MethodInfo> m_ServerCommands = new Dictionary<string, MethodInfo>();
+		Dictionary<string, MethodInfo> m_ClientCommands = new Dictionary<string, MethodInfo>();
 
 		private CommandHandler()
 		{
@@ -18,14 +18,14 @@ namespace pNetworkStack.Commands
 			foreach (MethodInfo methodInfo in serverCommandsEnum)
 			{
 				ServerCommand serverCommand = (ServerCommand)methodInfo.GetCustomAttribute(typeof(ServerCommand));
-				_ServerCommands.Add(serverCommand.GetCommand(), methodInfo);
+				m_ServerCommands.Add(serverCommand.GetCommand(), methodInfo);
 			}
 			
 			IEnumerable<MethodInfo> clientCommandsEnum = GetMethodsWithAttribute(AppDomain.CurrentDomain.GetAssemblies().GetType(), typeof(ClientCommand));
 			foreach (MethodInfo methodInfo in clientCommandsEnum)
 			{
 				ClientCommand clientCommand = (ClientCommand)methodInfo.GetCustomAttribute(typeof(ClientCommand));
-				_ClientCommands.Add(clientCommand.GetCommand(), methodInfo);
+				m_ClientCommands.Add(clientCommand.GetCommand(), methodInfo);
 			}
 		}
 		
@@ -42,10 +42,7 @@ namespace pNetworkStack.Commands
 
 		public static CommandHandler GetHandler()
 		{
-			if (_Instance == null)
-				_Instance = new CommandHandler();
-
-			return _Instance;
+			return Instance ?? (Instance = new CommandHandler());
 		}
 
 		public bool ExecuteServerCommand(string command)
@@ -55,9 +52,9 @@ namespace pNetworkStack.Commands
 
 		public bool ExecuteServerCommand(string command, object[] args)
 		{
-			if (!_ServerCommands.ContainsKey(command) || _ServerCommands[command].DeclaringType == null) return false;
+			if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null) return false;
 
-			_ServerCommands[command].Invoke(Activator.CreateInstance(_ServerCommands[command].DeclaringType), args);
+			m_ServerCommands[command].Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
 			return true;
 		}
 		
@@ -68,9 +65,9 @@ namespace pNetworkStack.Commands
 
 		public bool ExecuteClientCommand(string command, object[] args)
 		{
-			if (!_ClientCommands.ContainsKey(command) || _ClientCommands[command].DeclaringType == null) return false;
+			if (!m_ClientCommands.ContainsKey(command) || m_ClientCommands[command].DeclaringType == null) return false;
 
-			_ClientCommands[command].Invoke(Activator.CreateInstance(_ClientCommands[command].DeclaringType), args);
+			m_ClientCommands[command].Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
 			return true;
 		}
 	}
