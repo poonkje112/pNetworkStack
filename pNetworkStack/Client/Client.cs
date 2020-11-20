@@ -11,7 +11,7 @@ namespace pNetworkStack.client
 	{
 		//TODO Parse the received data to the CommandHandler
 
-		Socket _Client;
+		private readonly Socket m_Client;
 
 		public Client(string ip, int port)
 		{
@@ -22,10 +22,10 @@ namespace pNetworkStack.client
 			try
 			{
 				// Create the socket
-				_Client = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+				m_Client = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
 				// Connect to the server
-				_Client.Connect(remoteEndPoint);
+				m_Client.Connect(remoteEndPoint);
 			}
 			catch (SocketException e)
 			{
@@ -34,10 +34,10 @@ namespace pNetworkStack.client
 			}
 
 			// Start the receive loop
-			Receive(_Client);
+			Receive(m_Client);
 		}
 
-		void Receive(Socket client)
+		private void Receive(Socket client)
 		{
 			try
 			{
@@ -56,7 +56,7 @@ namespace pNetworkStack.client
 			}
 		}
 
-		void ReceiveCallback(IAsyncResult ar)
+		private void ReceiveCallback(IAsyncResult ar)
 		{
 			string content = string.Empty;
 
@@ -110,7 +110,7 @@ namespace pNetworkStack.client
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
-			_Client.Send(data, 0, data.Length, 0);
+			m_Client.Send(data, 0, data.Length, 0);
 		}
 
 		/// <summary>
@@ -118,7 +118,7 @@ namespace pNetworkStack.client
 		/// </summary>
 		public bool IsConnected
 		{
-			get => _Client.Connected;
+			get => m_Client.Connected;
 		}
 	}
 }

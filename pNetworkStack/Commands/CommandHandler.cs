@@ -28,17 +28,6 @@ namespace pNetworkStack.Commands
 				m_ClientCommands.Add(clientCommand.GetCommand(), methodInfo);
 			}
 		}
-		
-		IEnumerable<MethodInfo> GetMethodsWithAttribute(Type classType, Type attributeType)
-		{
-			IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies() // Returns all currenlty loaded assemblies
-				.SelectMany(x => x.GetTypes()) // returns all types defined in this assemblies
-				.Where(x => x.IsClass) // only yields classes
-				.SelectMany(x => x.GetMethods()) // returns all methods defined in those classes
-				.Where(x => x.GetCustomAttributes(attributeType, false).FirstOrDefault() != null); // returns only methods that have the InvokeAttribute
-
-			return methods;
-		}
 
 		public static CommandHandler GetHandler()
 		{
@@ -69,6 +58,17 @@ namespace pNetworkStack.Commands
 
 			m_ClientCommands[command].Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
 			return true;
+		}
+		
+		private IEnumerable<MethodInfo> GetMethodsWithAttribute(Type classType, Type attributeType)
+		{
+			IEnumerable<MethodInfo> methods = AppDomain.CurrentDomain.GetAssemblies() // Returns all currenlty loaded assemblies
+				.SelectMany(x => x.GetTypes()) // returns all types defined in this assemblies
+				.Where(x => x.IsClass) // only yields classes
+				.SelectMany(x => x.GetMethods()) // returns all methods defined in those classes
+				.Where(x => x.GetCustomAttributes(attributeType, false).FirstOrDefault() != null); // returns only methods that have the InvokeAttribute
+
+			return methods;
 		}
 	}
 }

@@ -6,7 +6,7 @@ namespace ClientExample
 {
 	class Program
 	{
-		static void Main(string[] args)
+		private static void Main(string[] args)
 		{
 			InitializeDebugger();
 
@@ -30,7 +30,7 @@ namespace ClientExample
 			Console.ReadKey();
 		}
 		
-		static void InitializeDebugger()
+		private static void InitializeDebugger()
 		{
 			Debugger.OnInfo += s =>
 			{

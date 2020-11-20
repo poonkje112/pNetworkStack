@@ -6,7 +6,7 @@ namespace ServerExample
 {
 	class Program
 	{
-		static void Main(string[] args)
+		private static void Main(string[] args)
 		{
 			InitializeDebugger();
 
@@ -25,7 +25,7 @@ namespace ServerExample
 			Console.ReadLine();
 		}
 
-		static void InitializeDebugger()
+		private static void InitializeDebugger()
 		{
 			Debugger.OnInfo += s =>
 			{

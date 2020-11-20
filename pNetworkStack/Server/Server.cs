@@ -12,15 +12,15 @@ namespace pNetworkStack.Server
 	{
 		//TODO Parse the received data to the CommandHandler
 		
-		static Server Instance;
+		private static Server Instance;
 
 		// All server/client commands gets handled here
-		CommandHandler m_CommandHandler;
+		private CommandHandler m_CommandHandler;
 
 		// Our state to check if the server is running or not
-		bool m_IsRunning;
+		private bool m_IsRunning;
 		
-		List<ClientData> m_Clients = new List<ClientData>();
+		private List<ClientData> m_Clients = new List<ClientData>();
 		
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -65,7 +65,7 @@ namespace pNetworkStack.Server
 			}
 		}
 
-		void AcceptClient(IAsyncResult ar)
+		private void AcceptClient(IAsyncResult ar)
 		{
 			// Gets the TcpClient that handles the requests
 			TcpListener listener = (TcpListener) ar.AsyncState;
@@ -84,7 +84,7 @@ namespace pNetworkStack.Server
 			listener.BeginAcceptSocket(AcceptClient, listener);
 		}
 
-		void ReadCallback(IAsyncResult ar)
+		private void ReadCallback(IAsyncResult ar)
 		{
 			string content = string.Empty;
 

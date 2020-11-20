@@ -5,7 +5,7 @@ namespace pNetworkStack.Commands
 	[AttributeUsage(AttributeTargets.Method)]
 	public class ServerCommand : Attribute
 	{
-		readonly string m_Command;
+		private readonly string m_Command;
 		
 		public ServerCommand(string command)
 		{
