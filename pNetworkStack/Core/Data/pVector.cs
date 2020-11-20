@@ -4,6 +4,24 @@ namespace pNetworkStack.Core.Data
 	{
 		public float X, Y, Z;
 
+		/// <summary>
+		/// Converts an string to a pVector
+		/// </summary>
+		/// <param name="text">example: "X,Y,Z"</param>
+		/// <returns>A new pVector</returns>
+		public static pVector StringToPVector(string text)
+		{
+			pVector output = Zero();
+
+			string[] values = text.Split(',');
+
+			float.TryParse(values[0], out output.X);
+			float.TryParse(values[1], out output.Y);
+			float.TryParse(values[2], out output.Z);
+			
+			return output;
+		}
+		
 		#region Constructors
 
 		public pVector(float x, float y)
