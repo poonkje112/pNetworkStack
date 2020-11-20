@@ -9,5 +9,7 @@ namespace pNetworkStack.Core.Data
 		public byte[] Buffer = new byte[BufferSize];
 		public StringBuilder Builder = new StringBuilder();
 		public Socket WorkClient = null;
+
+		public User UserData;
 	}
 }
