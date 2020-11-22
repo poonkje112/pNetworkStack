@@ -45,6 +45,18 @@ namespace pNetworkStack.client.Commands
 			Client.OnUserJoined?.Invoke(user);
 		}
 
+		[ClientCommand("pl_add_bulk")]
+		public void AddPlayerBulk(string[] args)
+		{
+			User[] users = JsonConvert.DeserializeObject<User[]>(args[0]);
+
+			foreach (User userData in users)
+			{
+				Client.GetCurrent().ConnectedUsers.Add(userData.UUID, userData);
+				Client.OnUserJoined?.Invoke(userData);
+			}
+		}
+
 		[ClientCommand("pl_remove")]
 		public void RemovePlayer(string[] args)
 		{
