@@ -1,3 +1,4 @@
+using System;
 using System.Net.Sockets;
 using Newtonsoft.Json;
 using pNetworkStack.Commands;
@@ -19,20 +20,22 @@ namespace pNetworkStack.Server.Commands
 		[ServerCommand("pl_init")]
 		public void InitNewPlayer(Socket sender, string[] args)
 		{
+			// Converting the sent data back to a User object
 			User data = JsonConvert.DeserializeObject<User>(Util.Join(' ', args));
-
-			Server.GetCurrent().Clients[data.UUID].UserData = data;
 			
+			// Updating the User data of the sender
+			Server.GetCurrent().ClientInit[data.UUID].UserData = data;
+
+			// Telling everyone a new player has joined
 			Server.GetCurrent().SendRPC(sender, $"pl_add {JsonConvert.SerializeObject(data)}");
-			foreach (ClientData d in Server.GetCurrent().Clients.Values)
-			{
-				if(d.UserData.UUID == data.UUID) continue;
-				Server.GetCurrent().Send(sender, $"pl_add {JsonConvert.SerializeObject(d.UserData)}");
-			}
+
+			// Queue the new player to be taken into the update loop in the next tick
+			Server.GetCurrent().AddClientQueue.Enqueue(new Tuple<string, ClientData>(data.UUID, Server.GetCurrent().ClientInit[data.UUID]));
+			Server.GetCurrent().ClientInit.Remove(data.UUID);
 		}
 		
 		[ServerCommand("pl_update_position")]
-		public void UpdatePlayerPosition(string[] args)
+		public void UpdatePlayerPosition(Socket sender, string[] args)
 		{
 			string uid = args[0];
 			pVector pos = pVector.StringToPVector(args[1]);
@@ -41,7 +44,7 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_update_euler")]
-		public void UpdatePlayerEuler(string[] args)
+		public void UpdatePlayerEuler(Socket sender, string[] args)
 		{
 			string uid = args[0];
 			pVector euler = pVector.StringToPVector(args[1]);
@@ -50,7 +53,7 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_disconnect")]
-		public void DisconnectPlayer(string[] args)
+		public void DisconnectPlayer(Socket sender, string[] args)
 		{
 			Server.GetCurrent().DisconnectClient(args[0]);
 		}

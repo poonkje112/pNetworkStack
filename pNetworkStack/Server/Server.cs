@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using pNetworkStack.client;
@@ -21,7 +23,11 @@ namespace pNetworkStack.Server
 		// Our state to check if the server is running or not
 		private bool m_IsRunning;
 
+		private TpsHandler m_TpsHandler;
+
 		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
+		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
+		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -30,8 +36,7 @@ namespace pNetworkStack.Server
 		/// <returns>An instance of the server</returns>
 		public static Server CreateServer(int port)
 		{
-			if (Instance == null) Instance = new Server(port);
-			return Instance;
+			return new Server(port);
 		}
 
 		/// <summary>
@@ -47,11 +52,22 @@ namespace pNetworkStack.Server
 		{
 			if (Instance == null)
 			{
+				Instance = this;
+				
 				Debugger.Log("Starting server...");
+
+				// Prepare the tps handler
+				m_TpsHandler = TpsHandler.GetHandler();
+				m_TpsHandler.PreUpdate += PreUpdate;
+				m_TpsHandler.TransfromUpdate += TransfromUpdate;
+				m_TpsHandler.FinalUpdate += FinalUpdate;
 
 				// Start listening
 				TcpListener listener = new TcpListener(System.Net.IPAddress.Any, port);
 				listener.Start();
+
+				// Start the tps handler
+				m_TpsHandler.StartTicker();
 
 				// Set the running state to true
 				m_IsRunning = true;
@@ -64,6 +80,43 @@ namespace pNetworkStack.Server
 				// Wait for a new TcpClient
 				listener.BeginAcceptSocket(AcceptClient, listener);
 			}
+		}
+
+
+		private void PreUpdate()
+		{
+		}
+
+		private void TransfromUpdate()
+		{
+			foreach (ClientData sender in Clients.Values)
+			{
+				SendRPC(sender.WorkClient,
+					$"pl_update_position {sender.UserData.UUID} {sender.UserData.GetPosition()}");
+				SendRPC(sender.WorkClient, $"pl_update_euler {sender.UserData.UUID} {sender.UserData.GetEuler()}");
+			}
+		}
+
+		private void FinalUpdate()
+		{
+			while (AddClientQueue.Count > 0)
+			{
+				Tuple<string, ClientData> data = AddClientQueue.Dequeue(); 
+				
+				List<User> users = new List<User>();
+				
+				foreach (ClientData clientsValue in Clients.Values)
+				{
+					users.Add(clientsValue.UserData);
+				}
+				
+				byte[] dataToSend = Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}" + "<EOF>");
+				
+				data.Item2.SendData(dataToSend);
+				
+				Clients.Add(data.Item1, data.Item2);
+			}
+			
 		}
 
 		private void AcceptClient(IAsyncResult ar)
@@ -91,13 +144,12 @@ namespace pNetworkStack.Server
 				UUID = randomUID
 			};
 
+			ClientInit.Add(randomUID, data);
+			
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 
-			Send(client, $"pl_init {randomUID}");
-
-			// Add the player to our list
-			Clients.Add(randomUID, data);
+			SendInit(client, $"pl_init {randomUID}");
 
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
@@ -148,12 +200,10 @@ namespace pNetworkStack.Server
 
 				// Assume the client has lost connection
 				Clients.Remove(data.UserData.UUID);
-
-				//TODO Send an RPC that this client has disconnected
 			}
 		}
 
-		public void Send(Socket handler, string message)
+		public void Send(Socket receiver, string message)
 		{
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
@@ -162,9 +212,38 @@ namespace pNetworkStack.Server
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
 			// Send message the message
-			handler.Send(data, 0, data.Length, 0);
-		}
+			// receiver.Send(data, 0, data.Length, 0);
 
+			foreach (ClientData u in Clients.Values)
+			{
+				if (u.WorkClient == receiver)
+				{
+					u.SendData(data);
+					break;
+				}
+			}
+		}	
+		
+		public void SendInit(Socket receiver, string message)
+		{
+			// If the message already contains <EOF> then remove it.
+			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+
+			// Convert the message to bytes
+			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
+
+			// Send message the message
+			// receiver.Send(data, 0, data.Length, 0);
+
+			foreach (ClientData u in ClientInit.Values)
+			{
+				if (u.WorkClient == receiver)
+				{
+					u.SendData(data);
+					break;
+				}
+			}
+		}
 
 		/// <summary>
 		/// Sends a message to all connected clients
@@ -185,7 +264,7 @@ namespace pNetworkStack.Server
 				Send(receiver, message);
 			}
 		}
-		
+
 		public void DisconnectClient(string uid)
 		{
 			ClientData sender = Clients[uid];
@@ -199,6 +278,5 @@ namespace pNetworkStack.Server
 		{
 			get => m_IsRunning;
 		}
-
 	}
 }
