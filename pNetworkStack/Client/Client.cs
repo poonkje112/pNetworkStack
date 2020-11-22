@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
@@ -33,8 +34,8 @@ namespace pNetworkStack.client
 		/// <param name="port">target port for connection</param>
 		/// <returns>A new running instance</returns>
 		public static Client CreateClient(string ip, int port)
-		{ 
-			if(m_Instance == null) return new Client(ip, port);
+		{
+			if (m_Instance == null) return new Client(ip, port);
 			return m_Instance;
 		}
 
@@ -151,6 +152,8 @@ namespace pNetworkStack.client
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
+
+			Debugger.Log($"Message: {message}", LogType.Warning);
 
 			m_Client.Send(data, 0, data.Length, 0);
 		}
