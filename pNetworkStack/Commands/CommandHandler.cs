@@ -46,10 +46,19 @@ namespace pNetworkStack.Commands
 		/// <returns>If the command was found and executed</returns>
 		public bool ExecuteServerCommand(string command, object[] args = null)
 		{
-			if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null) return false;
+			try
+			{
+				if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null)
+					return false;
 
-			m_ServerCommands[command].Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
-			return true;
+				m_ServerCommands[command]
+					.Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
 		}
 
 		/// <summary>
@@ -60,10 +69,19 @@ namespace pNetworkStack.Commands
 		/// <returns>If the command was found and executed</returns>
 		public bool ExecuteClientCommand(string command, object[] args = null)
 		{
-			if (!m_ClientCommands.ContainsKey(command) || m_ClientCommands[command].DeclaringType == null) return false;
+			try
+			{
+				if (!m_ClientCommands.ContainsKey(command) || m_ClientCommands[command].DeclaringType == null)
+					return false;
 
-			m_ClientCommands[command].Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
-			return true;
+				m_ClientCommands[command]
+					.Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
 		}
 		
 		/// <summary>
