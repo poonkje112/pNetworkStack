@@ -1,5 +1,6 @@
 ﻿using System;
 using pNetworkStack.Core;
+using pNetworkStack.Core.Data;
 using pNetworkStack.Server;
 
 namespace ServerExample
@@ -12,6 +13,9 @@ namespace ServerExample
 
 			Server server = Server.CreateServer(4007);
 
+			server.OnUserJoined += OnUserJoined;
+			server.OnUserLeft += OnUserLeft;
+			
 			while (server.IsRunning)
 			{
 				string message = Console.ReadLine();
@@ -22,6 +26,16 @@ namespace ServerExample
 			}
 			
 			Console.ReadLine();
+		}
+
+		private static void OnUserLeft(User obj)
+		{
+			Console.WriteLine($"{obj.Username} has left the server!");
+		}
+
+		private static void OnUserJoined(User obj)
+		{
+			Console.WriteLine($"{obj.Username} has joined the server!");
 		}
 
 		private static void InitializeDebugger()

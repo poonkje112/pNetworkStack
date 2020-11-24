@@ -29,6 +29,8 @@ namespace pNetworkStack.Server
 		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
+		public Action<User> OnUserJoined, OnUserLeft;
+		
 		/// <summary>
 		/// Creates and starts a server on the specified port
 		/// </summary>
@@ -58,8 +60,6 @@ namespace pNetworkStack.Server
 
 				// Prepare the tps handler
 				m_TpsHandler = TpsHandler.GetHandler();
-				m_TpsHandler.PreUpdate += PreUpdate;
-				m_TpsHandler.TransfromUpdate += TransfromUpdate;
 				m_TpsHandler.FinalUpdate += FinalUpdate;
 
 				// Start listening
@@ -82,21 +82,6 @@ namespace pNetworkStack.Server
 			}
 		}
 
-
-		private void PreUpdate()
-		{
-		}
-
-		private void TransfromUpdate()
-		{
-			foreach (ClientData sender in Clients.Values)
-			{
-				SendRPC(sender.WorkClient,
-					$"pl_update_position {sender.UserData.UUID} {sender.UserData.GetPosition()}");
-				SendRPC(sender.WorkClient, $"pl_update_euler {sender.UserData.UUID} {sender.UserData.GetEuler()}");
-			}
-		}
-
 		private void FinalUpdate()
 		{
 			while (AddClientQueue.Count > 0)
@@ -115,6 +100,7 @@ namespace pNetworkStack.Server
 				data.Item2.SendData(dataToSend);
 				
 				Clients.Add(data.Item1, data.Item2);
+				OnUserJoined?.Invoke(data.Item2.UserData);
 			}
 			
 		}
@@ -146,11 +132,13 @@ namespace pNetworkStack.Server
 
 			ClientInit.Add(randomUID, data);
 			
+			Debugger.Log("A user is joining!");
+			
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 
 			SendInit(client, $"pl_init {randomUID}");
-
+			
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
 		}
@@ -177,13 +165,15 @@ namespace pNetworkStack.Server
 					string content = data.Builder.ToString();
 					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 					{
+						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+						
 						// Parse the command to the parser
-						Util.ParseCommand(handler, content.Replace("<EOF>", ""),
+						Util.ParseCommand(handler, content,
 							(command, parameters) =>
 							{
 								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
 							});
-
+						
 						// Clear the buffer and builder to prepare for new data
 						data.Buffer = new byte[ClientData.BufferSize];
 						data.Builder.Clear();
@@ -195,11 +185,8 @@ namespace pNetworkStack.Server
 			}
 			catch (SocketException e)
 			{
-				// Tell all clients this user has disconnected
-				SendRPC(data.WorkClient, $"pl_remove {data.UserData.UUID}");
-
 				// Assume the client has lost connection
-				Clients.Remove(data.UserData.UUID);
+				DisconnectClient(data.UserData.UUID);
 			}
 		}
 
@@ -272,6 +259,8 @@ namespace pNetworkStack.Server
 			SendRPC(sender.WorkClient, $"pl_remove {uid}");
 
 			Clients.Remove(uid);
+			
+			OnUserLeft?.Invoke(sender.UserData);
 		}
 
 		public bool IsRunning
