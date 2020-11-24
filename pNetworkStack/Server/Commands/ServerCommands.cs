@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net.Sockets;
 using Newtonsoft.Json;
 using pNetworkStack.Commands;
@@ -37,10 +38,26 @@ namespace pNetworkStack.Server.Commands
 		[ServerCommand("pl_update_position")]
 		public void UpdatePlayerPosition(Socket sender, string[] args)
 		{
-			string uid = args[0];
-			pVector pos = pVector.StringToPVector(args[1]);
+			string uid = string.Empty;
+
+			foreach (ClientData client in Server.GetCurrent().Clients.Values)
+			{
+				if (client.WorkClient == sender)
+				{
+					uid = client.UserData.UUID;
+					break;
+				}
+			}
+
+			if (string.IsNullOrEmpty(uid)) return;
+			
+			pVector pos = pVector.StringToPVector(args[0]);
 
 			Server.GetCurrent().Clients[uid].UserData.UpdatePosition(pos);
+			
+			User u = Server.GetCurrent().Clients[uid].UserData;
+			
+			Server.GetCurrent().SendRPC(sender, $"pl_update_position {u.UUID} {u.GetPosition()}");
 		}
 
 		[ServerCommand("pl_update_euler")]
@@ -50,6 +67,10 @@ namespace pNetworkStack.Server.Commands
 			pVector euler = pVector.StringToPVector(args[1]);
 			
 			Server.GetCurrent().Clients[uid].UserData.UpdateEuler(euler);
+			
+			User u = Server.GetCurrent().Clients[uid].UserData;
+			
+			Server.GetCurrent().SendRPC(sender, $"pl_update_euler {u.UUID} {u.GetEuler()}");
 		}
 
 		[ServerCommand("pl_disconnect")]
