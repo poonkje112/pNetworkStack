@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using pNetworkStack.Core;
 
 namespace pNetworkStack.Commands
 {
@@ -78,8 +79,10 @@ namespace pNetworkStack.Commands
 					.Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
 				return true;
 			}
-			catch (Exception ex)
+			catch (Exception e)
 			{
+				Debugger.Log($"Was processing:\n{command}\n{args}");
+				Debugger.Log(e.Message, LogType.Error);
 				return false;
 			}
 		}
