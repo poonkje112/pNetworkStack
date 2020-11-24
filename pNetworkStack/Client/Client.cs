@@ -27,6 +27,10 @@ namespace pNetworkStack.client
 
 		public User OurUser;
 
+		internal bool m_IsReady;
+
+		public bool IsReady => m_IsReady;
+
 		/// <summary>
 		/// This will create and return a new client connection instance
 		/// </summary>
@@ -119,13 +123,15 @@ namespace pNetworkStack.client
 					string content = data.Builder.ToString();
 					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 					{
+						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+
 						// Parse the command to the parser
-						Util.ParseCommand(content.Replace("<EOF>", ""),
+						Util.ParseCommand(content,
 							(command, parameters) =>
 							{
 								CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
 							});
-
+						
 						// Clear the buffer and builder to prepare for new data
 						data.Buffer = new byte[ClientData.BufferSize];
 						data.Builder.Clear();
@@ -151,11 +157,16 @@ namespace pNetworkStack.client
 		{
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
-			Debugger.Log($"Message: {message}", LogType.Warning);
+			m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, m_Client);
+		}
 
-			m_Client.Send(data, 0, data.Length, 0);
+		void OnSendDone(IAsyncResult ar)
+		{
+			Socket s = (Socket) ar.AsyncState;
+			s.EndSend(ar);
 		}
 
 		/// <summary>
@@ -176,6 +187,7 @@ namespace pNetworkStack.client
 
 				m_Client = null;
 				m_Instance = null;
+				m_IsReady = false;
 
 				OnClientDisconnected?.Invoke();
 			}

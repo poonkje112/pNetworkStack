@@ -50,6 +50,9 @@ namespace pNetworkStack.client.Commands
 		{
 			User[] users = JsonConvert.DeserializeObject<User[]>(args[0]);
 
+			if (!Client.GetCurrent().m_IsReady)
+				Client.GetCurrent().m_IsReady = true;
+			
 			foreach (User userData in users)
 			{
 				Client.GetCurrent().ConnectedUsers.Add(userData.UUID, userData);
