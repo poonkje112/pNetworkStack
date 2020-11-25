@@ -190,7 +190,7 @@ namespace pNetworkStack.Server
 				DisconnectClient(data.UserData.UUID);
 			}
 		}
-		
+
 		public void Send(Socket receiver, string message, bool init = false)
 		{
 			// If the message already contains <EOF> then remove it.
@@ -223,7 +223,13 @@ namespace pNetworkStack.Server
 		/// <param name="message">The message</param>
 		public void SendRPC(User sender, string message)
 		{
-			OnSendRPC?.Invoke(Encoding.ASCII.GetBytes(message), sender);
+			// If the message already contains <EOF> then remove it.
+			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+
+			// Convert the message to bytes
+			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
+			
+			OnSendRPC?.Invoke(data, sender);
 		}
 
 		public void DisconnectClient(string uid)
