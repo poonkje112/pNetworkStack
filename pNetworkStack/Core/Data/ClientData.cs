@@ -5,7 +5,7 @@ using System.Text;
 
 namespace pNetworkStack.Core.Data
 {
-	public class ClientData
+	internal class ClientData
 	{
 		public const int BufferSize = 1024;
 		public byte[] Buffer = new byte[BufferSize];
@@ -19,9 +19,9 @@ namespace pNetworkStack.Core.Data
 			SendData(data, null);
 		}
 		
-		public void SendData(byte[] data, ClientData ignoreSender)
+		public void SendData(byte[] data, User ignoreSender)
 		{
-			if (ignoreSender != null && ignoreSender.UserData.UUID == UserData.UUID) return;
+			if (ignoreSender != null && ignoreSender == UserData) return;
 			WorkClient.BeginSend(data, 0, data.Length, 0, OnSendDone, WorkClient);
 		}
 

@@ -49,7 +49,7 @@ namespace pNetworkStack.Core
 		/// <param name="sender">The socket that sent this command</param>
 		/// <param name="message">The message that needs to get parsed</param>
 		/// <param name="callback">The command processor</param>
-		internal static void ParseCommand(ClientData sender, string message, Action<string, object[]> callback)
+		internal static void ParseCommand(User sender, string message, Action<string, object[]> callback)
 		{
 			List<object> param = new List<object>();
 

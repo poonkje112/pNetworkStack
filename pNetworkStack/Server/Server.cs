@@ -31,7 +31,7 @@ namespace pNetworkStack.Server
 
 		public Action<User> OnUserJoined, OnUserLeft;
 
-		internal Action<byte[], ClientData> OnSendRPC;
+		internal Action<byte[], User> OnSendRPC;
 		
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -101,12 +101,11 @@ namespace pNetworkStack.Server
 				
 				data.Item2.SendData(dataToSend);
 
-				OnSendRPC += data.Item2.SendData;
-				
 				Clients.Add(data.Item1, data.Item2);
+				OnSendRPC += Clients[data.Item2.UserData.UUID].SendData;
+				
 				OnUserJoined?.Invoke(data.Item2.UserData);
 			}
-			
 		}
 
 		private void AcceptClient(IAsyncResult ar)
@@ -170,7 +169,7 @@ namespace pNetworkStack.Server
 						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
 						
 						// Parse the command to the parser
-						Util.ParseCommand(data, content,
+						Util.ParseCommand(data.UserData, content,
 							(command, parameters) =>
 							{
 								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
@@ -191,7 +190,7 @@ namespace pNetworkStack.Server
 				DisconnectClient(data.UserData.UUID);
 			}
 		}
-
+		
 		public void Send(Socket receiver, string message, bool init = false)
 		{
 			// If the message already contains <EOF> then remove it.
@@ -222,7 +221,7 @@ namespace pNetworkStack.Server
 		/// </summary>
 		/// <param name="sender">The client that is sending this</param>
 		/// <param name="message">The message</param>
-		public void SendRPC(ClientData sender, string message)
+		public void SendRPC(User sender, string message)
 		{
 			OnSendRPC?.Invoke(Encoding.ASCII.GetBytes(message), sender);
 		}
@@ -231,7 +230,7 @@ namespace pNetworkStack.Server
 		{
 			ClientData sender = Clients[uid];
 
-			SendRPC(sender, $"pl_remove {uid}");
+			SendRPC(sender.UserData, $"pl_remove {uid}");
 
 			OnSendRPC -= Clients[uid].SendData;
 			

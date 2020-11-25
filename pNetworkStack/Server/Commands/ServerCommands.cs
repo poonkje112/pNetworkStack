@@ -11,7 +11,7 @@ namespace pNetworkStack.Server.Commands
 	public class ServerCommands
 	{
 		[ServerCommand("say")]
-		public void Say(ClientData sender, string[] args)
+		public void Say(User sender, string[] args)
 		{
 			if (args == null || args.Length <= 0) return;
 			
@@ -19,7 +19,7 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_init")]
-		public void InitNewPlayer(ClientData sender, string[] args)
+		public void InitNewPlayer(User sender, string[] args)
 		{
 			// Converting the sent data back to a User object
 			User data = JsonConvert.DeserializeObject<User>(Util.Join(' ', args));
@@ -36,9 +36,9 @@ namespace pNetworkStack.Server.Commands
 		}
 		
 		[ServerCommand("pl_update_position")]
-		public void UpdatePlayerPosition(ClientData sender, string[] args)
+		public void UpdatePlayerPosition(User sender, string[] args)
 		{
-			string uid = sender.UserData.UUID;
+			string uid = sender.UUID;
 
 			pVector pos = pVector.StringToPVector(args[0]);
 
@@ -50,9 +50,9 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_update_euler")]
-		public void UpdatePlayerEuler(ClientData sender, string[] args)
+		public void UpdatePlayerEuler(User sender, string[] args)
 		{
-			string uid = sender.UserData.UUID;
+			string uid = sender.UUID;
 			
 			pVector euler = pVector.StringToPVector(args[0]);
 			
@@ -64,9 +64,9 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_disconnect")]
-		public void DisconnectPlayer(ClientData sender, string[] args)
+		public void DisconnectPlayer(User sender, string[] args)
 		{
-			Server.GetCurrent().DisconnectClient(sender.UserData.UUID);
+			Server.GetCurrent().DisconnectClient(sender.UUID);
 		}
 	}
 }
