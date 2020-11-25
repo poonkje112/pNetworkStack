@@ -31,7 +31,7 @@ namespace pNetworkStack.Server
 
 		public Action<User> OnUserJoined, OnUserLeft;
 
-		internal Action<byte[], Socket> OnSendRPC;
+		internal Action<byte[], ClientData> OnSendRPC;
 		
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -97,7 +97,7 @@ namespace pNetworkStack.Server
 					users.Add(clientsValue.UserData);
 				}
 				
-				byte[] dataToSend = Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}" + "<EOF>");
+				byte[] dataToSend = Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}<EOF>");
 				
 				data.Item2.SendData(dataToSend);
 
@@ -170,7 +170,7 @@ namespace pNetworkStack.Server
 						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
 						
 						// Parse the command to the parser
-						Util.ParseCommand(handler, content,
+						Util.ParseCommand(data, content,
 							(command, parameters) =>
 							{
 								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
@@ -200,9 +200,6 @@ namespace pNetworkStack.Server
 			// Convert the message to bytes
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
-			// Send message the message
-			// receiver.Send(data, 0, data.Length, 0);
-
 			Dictionary<string, ClientData> clientDict;
 
 			if (init)
@@ -225,20 +222,8 @@ namespace pNetworkStack.Server
 		/// </summary>
 		/// <param name="sender">The client that is sending this</param>
 		/// <param name="message">The message</param>
-		public void SendRPC(Socket sender, string message)
+		public void SendRPC(ClientData sender, string message)
 		{
-			// foreach (ClientData client in Clients.Values)
-			// {
-			// 	// Get the socket of the receiving end
-			// 	Socket receiver = client.WorkClient;
-			//
-			// 	// Check if the receiver and the sender are the same
-			// 	if (sender != null && receiver == sender) continue;
-			//
-			// 	// Send the message to the receiver
-			// 	Send(receiver, message);
-			// }
-			
 			OnSendRPC?.Invoke(Encoding.ASCII.GetBytes(message), sender);
 		}
 
@@ -246,7 +231,7 @@ namespace pNetworkStack.Server
 		{
 			ClientData sender = Clients[uid];
 
-			SendRPC(sender.WorkClient, $"pl_remove {uid}");
+			SendRPC(sender, $"pl_remove {uid}");
 
 			OnSendRPC -= Clients[uid].SendData;
 			
