@@ -11,7 +11,7 @@ namespace pNetworkStack.Server.Commands
 	public class ServerCommands
 	{
 		[ServerCommand("say")]
-		public void Say(Socket sender, string[] args)
+		public void Say(User sender, string[] args)
 		{
 			if (args == null || args.Length <= 0) return;
 			
@@ -19,7 +19,7 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_init")]
-		public void InitNewPlayer(Socket sender, string[] args)
+		public void InitNewPlayer(User sender, string[] args)
 		{
 			// Converting the sent data back to a User object
 			User data = JsonConvert.DeserializeObject<User>(Util.Join(' ', args));
@@ -36,35 +36,25 @@ namespace pNetworkStack.Server.Commands
 		}
 		
 		[ServerCommand("pl_update_position")]
-		public void UpdatePlayerPosition(Socket sender, string[] args)
+		public void UpdatePlayerPosition(User sender, string[] args)
 		{
-			string uid = string.Empty;
+			string uid = sender.UUID;
 
-			foreach (ClientData client in Server.GetCurrent().Clients.Values)
-			{
-				if (client.WorkClient == sender)
-				{
-					uid = client.UserData.UUID;
-					break;
-				}
-			}
-
-			if (string.IsNullOrEmpty(uid)) return;
-			
 			pVector pos = pVector.StringToPVector(args[0]);
 
 			Server.GetCurrent().Clients[uid].UserData.UpdatePosition(pos);
 			
 			User u = Server.GetCurrent().Clients[uid].UserData;
 			
-			Server.GetCurrent().SendRPC(sender, $"pl_update_position {u.UUID} {u.GetPosition()}");
+			Server.GetCurrent().SendRPC(sender, $"pl_update_position {uid} {u.GetPosition()}");
 		}
 
 		[ServerCommand("pl_update_euler")]
-		public void UpdatePlayerEuler(Socket sender, string[] args)
+		public void UpdatePlayerEuler(User sender, string[] args)
 		{
-			string uid = args[0];
-			pVector euler = pVector.StringToPVector(args[1]);
+			string uid = sender.UUID;
+			
+			pVector euler = pVector.StringToPVector(args[0]);
 			
 			Server.GetCurrent().Clients[uid].UserData.UpdateEuler(euler);
 			
@@ -74,9 +64,9 @@ namespace pNetworkStack.Server.Commands
 		}
 
 		[ServerCommand("pl_disconnect")]
-		public void DisconnectPlayer(Socket sender, string[] args)
+		public void DisconnectPlayer(User sender, string[] args)
 		{
-			Server.GetCurrent().DisconnectClient(args[0]);
+			Server.GetCurrent().DisconnectClient(sender.UUID);
 		}
 	}
 }

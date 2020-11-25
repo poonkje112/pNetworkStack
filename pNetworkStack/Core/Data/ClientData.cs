@@ -13,9 +13,15 @@ namespace pNetworkStack.Core.Data
 		public Socket WorkClient = null;
 
 		public User UserData;
-		
+
 		public void SendData(byte[] data)
 		{
+			SendData(data, null);
+		}
+		
+		public void SendData(byte[] data, User ignoreSender)
+		{
+			if (ignoreSender != null && ignoreSender == UserData) return;
 			WorkClient.BeginSend(data, 0, data.Length, 0, OnSendDone, WorkClient);
 		}
 
