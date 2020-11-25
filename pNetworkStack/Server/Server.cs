@@ -30,6 +30,8 @@ namespace pNetworkStack.Server
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
 		public Action<User> OnUserJoined, OnUserLeft;
+
+		internal Action<byte[], Socket> OnSendRPC;
 		
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -98,6 +100,8 @@ namespace pNetworkStack.Server
 				byte[] dataToSend = Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}" + "<EOF>");
 				
 				data.Item2.SendData(dataToSend);
+
+				OnSendRPC += data.Item2.SendData;
 				
 				Clients.Add(data.Item1, data.Item2);
 				OnUserJoined?.Invoke(data.Item2.UserData);
@@ -132,12 +136,10 @@ namespace pNetworkStack.Server
 
 			ClientInit.Add(randomUID, data);
 			
-			Debugger.Log("A user is joining!");
-			
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 
-			SendInit(client, $"pl_init {randomUID}");
+			Send(client, $"pl_init {randomUID}", true);
 			
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
@@ -190,7 +192,7 @@ namespace pNetworkStack.Server
 			}
 		}
 
-		public void Send(Socket receiver, string message)
+		public void Send(Socket receiver, string message, bool init = false)
 		{
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
@@ -201,28 +203,14 @@ namespace pNetworkStack.Server
 			// Send message the message
 			// receiver.Send(data, 0, data.Length, 0);
 
-			foreach (ClientData u in Clients.Values)
-			{
-				if (u.WorkClient == receiver)
-				{
-					u.SendData(data);
-					break;
-				}
-			}
-		}	
-		
-		public void SendInit(Socket receiver, string message)
-		{
-			// If the message already contains <EOF> then remove it.
-			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+			Dictionary<string, ClientData> clientDict;
 
-			// Convert the message to bytes
-			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
-
-			// Send message the message
-			// receiver.Send(data, 0, data.Length, 0);
-
-			foreach (ClientData u in ClientInit.Values)
+			if (init)
+				clientDict = ClientInit;
+			else
+				clientDict = Clients;
+			
+			foreach (ClientData u in clientDict.Values)
 			{
 				if (u.WorkClient == receiver)
 				{
@@ -239,17 +227,19 @@ namespace pNetworkStack.Server
 		/// <param name="message">The message</param>
 		public void SendRPC(Socket sender, string message)
 		{
-			foreach (ClientData client in Clients.Values)
-			{
-				// Get the socket of the receiving end
-				Socket receiver = client.WorkClient;
-
-				// Check if the receiver and the sender are the same
-				if (sender != null && receiver == sender) continue;
-
-				// Send the message to the receiver
-				Send(receiver, message);
-			}
+			// foreach (ClientData client in Clients.Values)
+			// {
+			// 	// Get the socket of the receiving end
+			// 	Socket receiver = client.WorkClient;
+			//
+			// 	// Check if the receiver and the sender are the same
+			// 	if (sender != null && receiver == sender) continue;
+			//
+			// 	// Send the message to the receiver
+			// 	Send(receiver, message);
+			// }
+			
+			OnSendRPC?.Invoke(Encoding.ASCII.GetBytes(message), sender);
 		}
 
 		public void DisconnectClient(string uid)
@@ -258,6 +248,8 @@ namespace pNetworkStack.Server
 
 			SendRPC(sender.WorkClient, $"pl_remove {uid}");
 
+			OnSendRPC -= Clients[uid].SendData;
+			
 			Clients.Remove(uid);
 			
 			OnUserLeft?.Invoke(sender.UserData);
