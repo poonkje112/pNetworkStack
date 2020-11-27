@@ -190,6 +190,12 @@ namespace pNetworkStack.client
 				m_IsReady = false;
 
 				OnClientDisconnected?.Invoke();
+
+				foreach (string uuid in ConnectedUsers.Keys)
+				{
+					ConnectedUsers.Remove(uuid);
+					OnUserLeft?.Invoke(uuid);
+				}
 			}
 		}
 
