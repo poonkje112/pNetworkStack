@@ -17,7 +17,7 @@ namespace pNetworkStack.client.Commands
 			string uid = args[0];
 
 			User sender = Client.GetCurrent().ConnectedUsers[uid];
-			
+
 			List<string> rawMessage = args.ToList();
 			rawMessage.RemoveAt(0);
 
@@ -33,10 +33,10 @@ namespace pNetworkStack.client.Commands
 		{
 			string uid = args[0];
 			Client.GetCurrent().OurUser.UUID = uid;
-				
+
 			Client.GetCurrent().Send($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}");
 		}
-		
+
 		[ClientCommand("pl_add")]
 		public void AddPlayer(string[] args)
 		{
@@ -52,7 +52,7 @@ namespace pNetworkStack.client.Commands
 
 			if (!Client.GetCurrent().m_IsReady)
 				Client.GetCurrent().m_IsReady = true;
-			
+
 			foreach (User userData in users)
 			{
 				Client.GetCurrent().ConnectedUsers.Add(userData.UUID, userData);
@@ -72,8 +72,15 @@ namespace pNetworkStack.client.Commands
 		public void UpdatePlayerPosition(string[] args)
 		{
 			string uid = args[0];
-			pVector pos = pVector.StringToPVector(args[1]);
 
+			// Check if the user exists in our local list if not then we are out of sync
+			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
+			{
+				Client.GetCurrent().Send("sync_list");
+				return;
+			}
+			
+			pVector pos = pVector.StringToPVector(args[1]);
 			Client.GetCurrent().ConnectedUsers[uid].UpdatePosition(pos);
 		}
 
@@ -81,9 +88,32 @@ namespace pNetworkStack.client.Commands
 		public void UpdatePlayerEuler(string[] args)
 		{
 			string uid = args[0];
+			
+			// Check if the user exists in our local list if not then we are out of sync
+			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
+			{
+				Client.GetCurrent().Send("sync_list");
+				return;
+			}
+			
 			pVector euler = pVector.StringToPVector(args[1]);
-
 			Client.GetCurrent().ConnectedUsers[uid].UpdateEuler(euler);
+		}
+
+		[ClientCommand("sync_list")]
+		public void SyncPlayerList(string[] args)
+		{
+			User[] users = JsonConvert.DeserializeObject<User[]>(args[0]);
+
+			foreach (User user in users)
+			{
+				// Checks if we already have an instance of the user
+				if(Client.GetCurrent().ConnectedUsers.ContainsKey(user.UUID)) continue;
+				
+				// Adds the missing user
+				Client.GetCurrent().ConnectedUsers.Add(user.UUID, user);
+				Client.OnUserJoined?.Invoke(user);
+			}
 		}
 
 	#endregion
