@@ -41,6 +41,10 @@ namespace pNetworkStack.client.Commands
 		public void AddPlayer(string[] args)
 		{
 			User user = JsonConvert.DeserializeObject<User>(Util.Join(' ', args));
+			
+			// Checking if the user already exists for some weird reason
+			if (Client.GetCurrent().ConnectedUsers.ContainsKey(user.UUID)) return;
+			
 			Client.GetCurrent().ConnectedUsers.Add(user.UUID, user);
 			Client.OnUserJoined?.Invoke(user);
 		}
