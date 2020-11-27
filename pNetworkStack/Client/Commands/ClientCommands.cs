@@ -41,10 +41,10 @@ namespace pNetworkStack.client.Commands
 		public void AddPlayer(string[] args)
 		{
 			User user = JsonConvert.DeserializeObject<User>(Util.Join(' ', args));
-			
+
 			// Checking if the user already exists for some weird reason
 			if (Client.GetCurrent().ConnectedUsers.ContainsKey(user.UUID)) return;
-			
+
 			Client.GetCurrent().ConnectedUsers.Add(user.UUID, user);
 			Client.OnUserJoined?.Invoke(user);
 		}
@@ -68,6 +68,10 @@ namespace pNetworkStack.client.Commands
 		public void RemovePlayer(string[] args)
 		{
 			string uid = args[0];
+			
+			// Check if the user exists in our local list
+			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid)) return;
+			
 			Client.GetCurrent().ConnectedUsers.Remove(uid);
 			Client.OnUserLeft?.Invoke(uid);
 		}
@@ -83,7 +87,7 @@ namespace pNetworkStack.client.Commands
 				Client.GetCurrent().Send("sync_list");
 				return;
 			}
-			
+
 			pVector pos = pVector.StringToPVector(args[1]);
 			Client.GetCurrent().ConnectedUsers[uid].UpdatePosition(pos);
 		}
@@ -92,14 +96,14 @@ namespace pNetworkStack.client.Commands
 		public void UpdatePlayerEuler(string[] args)
 		{
 			string uid = args[0];
-			
+
 			// Check if the user exists in our local list if not then we are out of sync
 			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
 			{
 				Client.GetCurrent().Send("sync_list");
 				return;
 			}
-			
+
 			pVector euler = pVector.StringToPVector(args[1]);
 			Client.GetCurrent().ConnectedUsers[uid].UpdateEuler(euler);
 		}
@@ -112,8 +116,8 @@ namespace pNetworkStack.client.Commands
 			foreach (User user in users)
 			{
 				// Checks if we already have an instance of the user
-				if(Client.GetCurrent().ConnectedUsers.ContainsKey(user.UUID)) continue;
-				
+				if (Client.GetCurrent().ConnectedUsers.ContainsKey(user.UUID)) continue;
+
 				// Adds the missing user
 				Client.GetCurrent().ConnectedUsers.Add(user.UUID, user);
 				Client.OnUserJoined?.Invoke(user);
