@@ -1,3 +1,5 @@
+using System;
+
 namespace pNetworkStack.Core.Data
 {
 	public class pVector
@@ -20,6 +22,14 @@ namespace pNetworkStack.Core.Data
 			float.TryParse(values[2], out output.Z);
 			
 			return output;
+		}
+
+		public static float GetDistance(pVector a, pVector b)
+		{
+			float num1 = a.X - b.X;
+			float num2 = a.Y - b.Y;
+			float num3 = a.Z - b.Z;
+			return (float) Math.Sqrt(num1 * num1 + num2 * num2 + num3 * num3);
 		}
 		
 		#region Constructors
