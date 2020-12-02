@@ -30,7 +30,8 @@ namespace pNetworkStack.Server
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
 		public Action<User> OnUserJoined, OnUserLeft;
-
+		public Action TransformUpdate, LateUpdate;
+		
 		internal Action<byte[], User> OnSendRPC;
 		
 		/// <summary>
@@ -62,6 +63,7 @@ namespace pNetworkStack.Server
 
 				// Prepare the tps handler
 				m_TpsHandler = TpsHandler.GetHandler();
+				m_TpsHandler.TransfromUpdate += TransfromUpdate;
 				m_TpsHandler.FinalUpdate += FinalUpdate;
 
 				// Start listening
@@ -84,8 +86,14 @@ namespace pNetworkStack.Server
 			}
 		}
 
+		private void TransfromUpdate()
+		{
+			TransformUpdate?.Invoke();
+		}
+
 		private void FinalUpdate()
 		{
+			LateUpdate?.Invoke();
 			while (AddClientQueue.Count > 0)
 			{
 				Tuple<string, ClientData> data = AddClientQueue.Dequeue(); 
