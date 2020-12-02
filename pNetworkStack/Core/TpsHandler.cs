@@ -13,8 +13,10 @@ namespace pNetworkStack.Core
 		private bool m_Active;
 		private int m_TickCount = 0;
 
+		private int m_TickTrack = 0;
+
 		public Action PreUpdate, TransfromUpdate, FinalUpdate;
-		
+
 		public static TpsHandler GetHandler()
 		{
 			return Instance ?? new TpsHandler();
@@ -24,12 +26,9 @@ namespace pNetworkStack.Core
 		{
 			TransfromUpdate += () => { m_TickCount++; };
 
-			m_TickerThread = new Thread(() =>
-			{
-				Ticker();
-			});
+			m_TickerThread = new Thread(() => { Ticker(); });
 		}
-		
+
 		public void StartTicker()
 		{
 			m_Active = true;
@@ -41,32 +40,36 @@ namespace pNetworkStack.Core
 			m_Active = false;
 			m_TickerThread.Abort();
 		}
-		
+
 		private void Ticker()
 		{
 			Stopwatch sw = Stopwatch.StartNew();
-			
+
 			while (m_Active)
 			{
-				if (sw.ElapsedMilliseconds <= 1000)
-				{
-					if (m_TickCount < ConVars.TicksPerSecond)
-					{
-						PreUpdate?.Invoke();
-						TransfromUpdate?.Invoke();
-						FinalUpdate?.Invoke();
-					}
-					else
-					{
-						int waitTime = (int)(1000 - sw.ElapsedMilliseconds);
-						
-						if(waitTime >= 0)
-							Thread.Sleep(waitTime);
+				Stopwatch tickStopWatch = Stopwatch.StartNew();
 
-						m_TickCount = 0;
-						sw.Restart();
+				PreUpdate?.Invoke();
+				TransfromUpdate?.Invoke();
+				FinalUpdate?.Invoke();
+
+				m_TickTrack += 1;
+
+				if (tickStopWatch.ElapsedMilliseconds < (1000 / ConVars.TicksPerSecond))
+				{
+					int tickSleepTime = (int) ((1000 / ConVars.TicksPerSecond) - tickStopWatch.ElapsedMilliseconds);
+
+					if (tickSleepTime >= 0)
+					{
+						Thread.Sleep(tickSleepTime);
 					}
 				}
+				else
+				{
+					Debugger.Log("Could not keep up!", LogType.Warning);
+				}
+
+				tickStopWatch.Reset();
 			}
 		}
 	}
