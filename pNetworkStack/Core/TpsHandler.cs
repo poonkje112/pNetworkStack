@@ -11,9 +11,9 @@ namespace pNetworkStack.Core
 
 		private Thread m_TickerThread;
 		private bool m_Active;
-		private int m_TickCount = 0;
 
 		private int m_TickTrack = 0;
+		public int TickCount => m_TickTrack;
 
 		public Action PreUpdate, TransfromUpdate, FinalUpdate;
 
@@ -24,8 +24,6 @@ namespace pNetworkStack.Core
 
 		private TpsHandler()
 		{
-			TransfromUpdate += () => { m_TickCount++; };
-
 			m_TickerThread = new Thread(() => { Ticker(); });
 		}
 
