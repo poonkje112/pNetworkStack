@@ -10,7 +10,7 @@ namespace ServerExample
 		private static void Main(string[] args)
 		{
 			InitializeDebugger();
-
+			
 			Server server = Server.CreateServer(4007);
 
 			server.OnUserJoined += OnUserJoined;
