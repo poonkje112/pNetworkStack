@@ -9,4 +9,8 @@
       <ProjectReference Include="..\pNetworkStack\pNetworkStack.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="BepuPhysics" Version="2.3.0-beta9" />
+    </ItemGroup>
+
 </Project>

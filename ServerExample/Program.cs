@@ -2,6 +2,7 @@
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
 using pNetworkStack.Server;
+using ServerExample.Physics;
 
 namespace ServerExample
 {
@@ -10,7 +11,10 @@ namespace ServerExample
 		private static void Main(string[] args)
 		{
 			InitializeDebugger();
-
+			
+			PhysicsEngine physicsEngine = new PhysicsEngine();
+			physicsEngine.InitializePhysicsEngine();
+			
 			Server server = Server.CreateServer(4007);
 
 			server.OnUserJoined += OnUserJoined;
@@ -55,6 +59,27 @@ namespace ServerExample
 			};
 
 			Debugger.OnError += s =>
+			{
+				Console.ForegroundColor = ConsoleColor.DarkRed;
+				Console.WriteLine(s);
+				Console.ForegroundColor = ConsoleColor.White;
+			};
+			
+			ServerDebugger.OnInfo += s =>
+			{
+				Console.ForegroundColor = ConsoleColor.White;
+				Console.WriteLine(s);
+				Console.ForegroundColor = ConsoleColor.White;
+			};
+
+			ServerDebugger.OnWarning += s =>
+			{
+				Console.ForegroundColor = ConsoleColor.DarkYellow;
+				Console.WriteLine(s);
+				Console.ForegroundColor = ConsoleColor.White;
+			};
+
+			ServerDebugger.OnError += s =>
 			{
 				Console.ForegroundColor = ConsoleColor.DarkRed;
 				Console.WriteLine(s);
