@@ -10,6 +10,12 @@ using pNetworkStack.Core.Data;
 
 namespace pNetworkStack.client
 {
+	internal struct SendObject
+	{
+		public Socket Socket;
+		public Action OnSendDone;
+	}
+	
 	public class Client
 	{
 		private static Client m_Instance;
@@ -155,18 +161,37 @@ namespace pNetworkStack.client
 		/// <param name="message">The message that needs to get sent</param>
 		public void Send(string message)
 		{
+			Send(message, null);
+		}
+		
+		/// <summary>
+		/// Send a message/command to the server
+		/// </summary>
+		/// <param name="message">The message that needs to get sent</param>
+		/// <param name="onSendDone">This will be executed when the message has been sent</param>
+		public void Send(string message, Action onSendDone)
+		{
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
 
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
-			m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, m_Client);
+			SendObject sendObject = new SendObject()
+			{
+				Socket = m_Client,
+				OnSendDone = onSendDone
+			};
+			
+			m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, sendObject);
 		}
 
 		void OnSendDone(IAsyncResult ar)
 		{
-			Socket s = (Socket) ar.AsyncState;
+			SendObject sobj = (SendObject) ar.AsyncState;
+			Socket s = sobj.Socket;
+			
 			s.EndSend(ar);
+			sobj.OnSendDone?.Invoke();
 		}
 
 		/// <summary>
