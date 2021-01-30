@@ -25,10 +25,12 @@ namespace pNetworkStack.Server
 
 		private TpsHandler m_TpsHandler;
 
-		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
+		internal Dictionary<string, ClientData> iClients = new Dictionary<string, ClientData>();
 		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
+		public Dictionary<string, ClientData> Clients => iClients;
+		
 		public Action<User> OnUserJoined, OnUserLeft;
 		public Action TransformUpdate, LateUpdate;
 		
@@ -100,7 +102,7 @@ namespace pNetworkStack.Server
 				
 				List<User> users = new List<User>();
 				
-				foreach (ClientData clientsValue in Clients.Values)
+				foreach (ClientData clientsValue in iClients.Values)
 				{
 					users.Add(clientsValue.UserData);
 				}
@@ -109,8 +111,8 @@ namespace pNetworkStack.Server
 				
 				data.Item2.SendData(dataToSend);
 
-				Clients.Add(data.Item1, data.Item2);
-				OnSendRPC += Clients[data.Item2.UserData.UUID].SendData;
+				iClients.Add(data.Item1, data.Item2);
+				OnSendRPC += iClients[data.Item2.UserData.UUID].SendData;
 				
 				OnUserJoined?.Invoke(data.Item2.UserData);
 			}
@@ -130,7 +132,7 @@ namespace pNetworkStack.Server
 			Random rand = new Random();
 			string randomUID = rand.Next(100000, 999999).ToString();
 
-			while (Clients.ContainsKey(randomUID))
+			while (iClients.ContainsKey(randomUID))
 			{
 				randomUID = rand.Next(100000, 999999).ToString();
 			}
@@ -212,7 +214,7 @@ namespace pNetworkStack.Server
 			if (init)
 				clientDict = ClientInit;
 			else
-				clientDict = Clients;
+				clientDict = iClients;
 			
 			foreach (ClientData u in clientDict.Values)
 			{
@@ -242,13 +244,13 @@ namespace pNetworkStack.Server
 
 		public void DisconnectClient(string uid)
 		{
-			ClientData sender = Clients[uid];
+			ClientData sender = iClients[uid];
 
 			SendRPC(sender.UserData, $"pl_remove {uid}");
 
-			OnSendRPC -= Clients[uid].SendData;
+			OnSendRPC -= iClients[uid].SendData;
 			
-			Clients.Remove(uid);
+			iClients.Remove(uid);
 			
 			OnUserLeft?.Invoke(sender.UserData);
 		}

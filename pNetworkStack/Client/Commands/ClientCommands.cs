@@ -107,6 +107,24 @@ namespace pNetworkStack.client.Commands
 			pVector euler = pVector.StringToPVector(args[1]);
 			Client.GetCurrent().ConnectedUsers[uid].UpdateEuler(euler);
 		}
+		
+		[ClientCommand("pl_update_transform")]
+		public void UpdateTransform(string[] args)
+		{
+			string uid = args[0];
+
+			// Check if the user exists in our local list if not then we are out of sync
+			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
+			{
+				Client.GetCurrent().Send("sync_list");
+				return;
+			}
+
+			pVector position = pVector.StringToPVector(args[1]);
+			pVector euler = pVector.StringToPVector(args[2]);
+			Client.GetCurrent().ConnectedUsers[uid].UpdatePosition(position);
+			Client.GetCurrent().ConnectedUsers[uid].UpdateEuler(euler);
+		}
 
 		[ClientCommand("sync_list")]
 		public void SyncPlayerList(string[] args)
