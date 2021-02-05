@@ -25,17 +25,16 @@ namespace pNetworkStack.Server
 
 		private TpsHandler m_TpsHandler;
 
-		internal Dictionary<string, ClientData> iClients = new Dictionary<string, ClientData>();
+		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
 		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
-		public Dictionary<string, ClientData> Clients => iClients;
-		
+
 		public Action<User> OnUserJoined, OnUserLeft;
 		public Action TransformUpdate, LateUpdate;
-		
+
 		internal Action<byte[], User> OnSendRPC;
-		
+
 		/// <summary>
 		/// Creates and starts a server on the specified port
 		/// </summary>
@@ -60,7 +59,7 @@ namespace pNetworkStack.Server
 			if (Instance == null)
 			{
 				Instance = this;
-				
+
 				Debugger.Log("Starting server...");
 
 				// Prepare the tps handler
@@ -98,22 +97,23 @@ namespace pNetworkStack.Server
 			LateUpdate?.Invoke();
 			while (AddClientQueue.Count > 0)
 			{
-				Tuple<string, ClientData> data = AddClientQueue.Dequeue(); 
-				
+				Tuple<string, ClientData> data = AddClientQueue.Dequeue();
+
 				List<User> users = new List<User>();
-				
-				foreach (ClientData clientsValue in iClients.Values)
+
+				foreach (ClientData clientsValue in Clients.Values)
 				{
 					users.Add(clientsValue.UserData);
 				}
-				
-				byte[] dataToSend = Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}<EOF>");
-				
+
+				byte[] dataToSend =
+					Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}<EOF>");
+
 				data.Item2.SendData(dataToSend);
 
-				iClients.Add(data.Item1, data.Item2);
-				OnSendRPC += iClients[data.Item2.UserData.UUID].SendData;
-				
+				Clients.Add(data.Item1, data.Item2);
+				OnSendRPC += Clients[data.Item2.UserData.UUID].SendData;
+
 				OnUserJoined?.Invoke(data.Item2.UserData);
 			}
 		}
@@ -132,7 +132,7 @@ namespace pNetworkStack.Server
 			Random rand = new Random();
 			string randomUID = rand.Next(100000, 999999).ToString();
 
-			while (iClients.ContainsKey(randomUID))
+			while (Clients.ContainsKey(randomUID))
 			{
 				randomUID = rand.Next(100000, 999999).ToString();
 			}
@@ -144,12 +144,12 @@ namespace pNetworkStack.Server
 			};
 
 			ClientInit.Add(randomUID, data);
-			
+
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 
 			Send(client, $"pl_init {randomUID}", true);
-			
+
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
 		}
@@ -177,14 +177,14 @@ namespace pNetworkStack.Server
 					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
 					{
 						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
-						
+
 						// Parse the command to the parser
 						Util.ParseCommand(data.UserData, content,
 							(command, parameters) =>
 							{
 								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
 							});
-						
+
 						// Clear the buffer and builder to prepare for new data
 						data.Buffer = new byte[ClientData.BufferSize];
 						data.Builder.Clear();
@@ -201,7 +201,12 @@ namespace pNetworkStack.Server
 			}
 		}
 
-		public void Send(Socket receiver, string message, bool init = false)
+		public void Send(User receiver, string message, bool init = false)
+		{
+			Send(Clients[receiver.UUID].WorkClient, message, init);
+		}
+
+		internal void Send(Socket receiver, string message, bool init = false)
 		{
 			// If the message already contains <EOF> then remove it.
 			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
@@ -214,8 +219,8 @@ namespace pNetworkStack.Server
 			if (init)
 				clientDict = ClientInit;
 			else
-				clientDict = iClients;
-			
+				clientDict = Clients;
+
 			foreach (ClientData u in clientDict.Values)
 			{
 				if (u.WorkClient == receiver)
@@ -238,20 +243,20 @@ namespace pNetworkStack.Server
 
 			// Convert the message to bytes
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
-			
+
 			OnSendRPC?.Invoke(data, sender);
 		}
 
 		public void DisconnectClient(string uid)
 		{
-			ClientData sender = iClients[uid];
+			ClientData sender = Clients[uid];
 
 			SendRPC(sender.UserData, $"pl_remove {uid}");
 
-			OnSendRPC -= iClients[uid].SendData;
-			
-			iClients.Remove(uid);
-			
+			OnSendRPC -= Clients[uid].SendData;
+
+			Clients.Remove(uid);
+
 			OnUserLeft?.Invoke(sender.UserData);
 		}
 

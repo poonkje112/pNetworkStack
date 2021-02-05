@@ -15,7 +15,20 @@ namespace ServerExample
 		[ServerCommand("pl_hit")]
 		public void Hit(User sender, string[] args)
 		{
-			Server.GetCurrent().Send(Server.GetCurrent().Clients[args[0]].WorkClient, $"damage {args[1]}");
+			Server.GetCurrent().Send(sender, $"damage {args[1]}");
+		}
+
+		[ServerCommand("pl_respawn")]
+		public void Respawn(User sender, string[] args)
+		{
+			if (Program.m_Red.Player.Equals(sender))
+			{
+				Server.GetCurrent().Send(sender, $"pl_respawn {Program.m_Red.Respawn()}");
+			}
+			else
+			{
+				Server.GetCurrent().Send(sender, $"pl_respawn {Program.m_Blu.Respawn()}");
+			}
 		}
 	}
 }

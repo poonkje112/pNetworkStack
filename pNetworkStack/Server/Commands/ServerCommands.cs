@@ -44,9 +44,9 @@ namespace pNetworkStack.Server.Commands
 
 			pVector pos = pVector.StringToPVector(args[0]);
 
-			Server.GetCurrent().iClients[uid].UserData.UpdatePosition(pos);
+			Server.GetCurrent().Clients[uid].UserData.UpdatePosition(pos);
 
-			User u = Server.GetCurrent().iClients[uid].UserData;
+			User u = Server.GetCurrent().Clients[uid].UserData;
 
 			Server.GetCurrent().SendRPC(sender, $"pl_update_position {uid} {u.GetPosition()}");
 		}
@@ -58,9 +58,9 @@ namespace pNetworkStack.Server.Commands
 
 			pVector euler = pVector.StringToPVector(args[0]);
 
-			Server.GetCurrent().iClients[uid].UserData.UpdateEuler(euler);
+			Server.GetCurrent().Clients[uid].UserData.UpdateEuler(euler);
 
-			User u = Server.GetCurrent().iClients[uid].UserData;
+			User u = Server.GetCurrent().Clients[uid].UserData;
 
 			Server.GetCurrent().SendRPC(sender, $"pl_update_euler {u.UUID} {u.GetEuler()}");
 		}
@@ -73,10 +73,10 @@ namespace pNetworkStack.Server.Commands
 			pVector position = pVector.StringToPVector(args[0]);
 			pVector euler = pVector.StringToPVector(args[1]);
 
-			Server.GetCurrent().iClients[uid].UserData.UpdatePosition(position);
-			Server.GetCurrent().iClients[uid].UserData.UpdateEuler(euler);
+			Server.GetCurrent().Clients[uid].UserData.UpdatePosition(position);
+			Server.GetCurrent().Clients[uid].UserData.UpdateEuler(euler);
 
-			User u = Server.GetCurrent().iClients[uid].UserData;
+			User u = Server.GetCurrent().Clients[uid].UserData;
 
 			Server.GetCurrent().SendRPC(sender, $"pl_update_transform {u.UUID} {u.GetPosition()} {u.GetEuler()}");
 		}
@@ -92,14 +92,14 @@ namespace pNetworkStack.Server.Commands
 		{
 			List<User> users = new List<User>();
 
-			foreach (ClientData clientsValue in Server.GetCurrent().iClients.Values)
+			foreach (ClientData clientsValue in Server.GetCurrent().Clients.Values)
 			{
 				if (clientsValue.UserData.UUID == sender.UUID) continue;
 
 				users.Add(clientsValue.UserData);
 			}
 
-			Server.GetCurrent().Send(Server.GetCurrent().iClients[sender.UUID].WorkClient,
+			Server.GetCurrent().Send(Server.GetCurrent().Clients[sender.UUID].WorkClient,
 				$"sync_list {JsonConvert.SerializeObject(users.ToArray())}");
 		}
 	}
