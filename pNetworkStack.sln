@@ -6,6 +6,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientExample", "ClientExam
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pNetworkStack", "pNetworkStack\pNetworkStack.csproj", "{57705FAA-3F9B-4883-A74F-6C68B3F33E03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UDPServerLobbyExample", "UDPServerLobbyExample\UDPServerLobbyExample.csproj", "{3E9AB385-3D48-4445-A5B1-75E011FAE8F8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UDPClientExample", "UDPClientExample\UDPClientExample.csproj", "{91DA0B35-12BB-47B2-9A90-6075ABA82359}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +28,13 @@ Global
 		{57705FAA-3F9B-4883-A74F-6C68B3F33E03}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{57705FAA-3F9B-4883-A74F-6C68B3F33E03}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{57705FAA-3F9B-4883-A74F-6C68B3F33E03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E9AB385-3D48-4445-A5B1-75E011FAE8F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E9AB385-3D48-4445-A5B1-75E011FAE8F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E9AB385-3D48-4445-A5B1-75E011FAE8F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E9AB385-3D48-4445-A5B1-75E011FAE8F8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91DA0B35-12BB-47B2-9A90-6075ABA82359}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91DA0B35-12BB-47B2-9A90-6075ABA82359}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91DA0B35-12BB-47B2-9A90-6075ABA82359}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91DA0B35-12BB-47B2-9A90-6075ABA82359}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
