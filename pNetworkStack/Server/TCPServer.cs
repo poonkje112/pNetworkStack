@@ -13,9 +13,9 @@ using pNetworkStack.Core.Data;
 
 namespace pNetworkStack.Server
 {
-	public class Server
+	public class TCPServer
 	{
-		private static Server Instance;
+		private static TCPServer Instance;
 
 		// All server/client commands gets handled here
 		private CommandHandler m_CommandHandler;
@@ -24,8 +24,10 @@ namespace pNetworkStack.Server
 		private bool m_IsRunning;
 
 		private TpsHandler m_TpsHandler;
-
-		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
+		private Connections m_Connections = Connections.Instance;
+		
+		private DataProcessor m_DataProcessor = DataProcessor.Instance;
+		
 		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
 		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
 
@@ -40,21 +42,21 @@ namespace pNetworkStack.Server
 		/// </summary>
 		/// <param name="port">the port the server should listen on</param>
 		/// <returns>An instance of the server</returns>
-		public static Server CreateServer(int port)
+		public static TCPServer CreateServer(int port)
 		{
-			return new Server(port);
+			return new TCPServer(port);
 		}
 
 		/// <summary>
 		/// Gets the current active and running server instance
 		/// </summary>
 		/// <returns>Server instance</returns>
-		public static Server GetCurrent()
+		public static TCPServer GetCurrent()
 		{
 			return Instance;
 		}
 
-		private Server(int port)
+		private TCPServer(int port)
 		{
 			if (Instance == null)
 			{
@@ -95,13 +97,14 @@ namespace pNetworkStack.Server
 		private void FinalUpdate()
 		{
 			LateUpdate?.Invoke();
+			
 			while (AddClientQueue.Count > 0)
 			{
 				Tuple<string, ClientData> data = AddClientQueue.Dequeue();
 
 				List<User> users = new List<User>();
 
-				foreach (ClientData clientsValue in Clients.Values)
+				foreach (ClientData clientsValue in m_Connections.Clients.Values)
 				{
 					users.Add(clientsValue.UserData);
 				}
@@ -111,8 +114,9 @@ namespace pNetworkStack.Server
 
 				data.Item2.SendData(dataToSend);
 
-				Clients.Add(data.Item1, data.Item2);
-				OnSendRPC += Clients[data.Item2.UserData.UUID].SendData;
+				// m_Connections.Clients.Add(data.Item1, data.Item2);
+				m_Connections.AddClient(data.Item1, data.Item2);
+				OnSendRPC += m_Connections.Clients[data.Item2.UserData.UUID].SendData;
 
 				OnUserJoined?.Invoke(data.Item2.UserData);
 			}
@@ -132,7 +136,7 @@ namespace pNetworkStack.Server
 			Random rand = new Random();
 			string randomUID = rand.Next(100000, 999999).ToString();
 
-			while (Clients.ContainsKey(randomUID))
+			while (m_Connections.Clients.ContainsKey(randomUID))
 			{
 				randomUID = rand.Next(100000, 999999).ToString();
 			}
@@ -143,10 +147,14 @@ namespace pNetworkStack.Server
 				UUID = randomUID
 			};
 
+			data.ConnectionType = ConnectionType.TCP;
+			data.EndPoint = client.RemoteEndPoint.ToString();
+			
 			ClientInit.Add(randomUID, data);
 
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+			// client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, m_DataProcessor.ReceiveCallback, data);
 
 			Send(client, $"pl_init {randomUID}", true);
 
@@ -182,7 +190,7 @@ namespace pNetworkStack.Server
 						Util.ParseCommand(data.UserData, content,
 							(command, parameters) =>
 							{
-								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
+								CommandHandler.GetHandler().ExecuteTcpServerCommand(command, parameters);
 							});
 
 						// Clear the buffer and builder to prepare for new data
@@ -203,7 +211,7 @@ namespace pNetworkStack.Server
 
 		public void Send(User receiver, string message, bool init = false)
 		{
-			Send(Clients[receiver.UUID].WorkClient, message, init);
+			Send(m_Connections.Clients[receiver.UUID].WorkClient, message, init);
 		}
 
 		internal void Send(Socket receiver, string message, bool init = false)
@@ -219,7 +227,7 @@ namespace pNetworkStack.Server
 			if (init)
 				clientDict = ClientInit;
 			else
-				clientDict = Clients;
+				clientDict = m_Connections.Clients;
 
 			foreach (ClientData u in clientDict.Values)
 			{
@@ -249,13 +257,13 @@ namespace pNetworkStack.Server
 
 		public void DisconnectClient(string uid)
 		{
-			ClientData sender = Clients[uid];
+			ClientData sender = m_Connections.Clients[uid];
 
 			SendRPC(sender.UserData, $"pl_remove {uid}");
 
-			OnSendRPC -= Clients[uid].SendData;
+			OnSendRPC -= m_Connections.Clients[uid].SendData;
 
-			Clients.Remove(uid);
+			m_Connections.RemoveClient(sender.EndPoint);
 
 			OnUserLeft?.Invoke(sender.UserData);
 		}

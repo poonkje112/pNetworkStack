@@ -7,11 +7,15 @@ namespace pNetworkStack.Core.Data
 {
 	public class ClientData
 	{
+		internal ConnectionType ConnectionType;
+		
 		public const int BufferSize = 1024;
 		public byte[] Buffer = new byte[BufferSize];
 		public StringBuilder Builder = new StringBuilder();
 		public Socket WorkClient = null;
 
+		public string EndPoint;
+		
 		public User UserData;
 
 		public void SendData(byte[] data)

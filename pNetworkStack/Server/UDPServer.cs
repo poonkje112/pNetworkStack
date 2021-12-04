@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
@@ -20,10 +21,8 @@ namespace pNetworkStack.Server
 
 		private TpsHandler m_TpsHandler;
 
-		internal Dictionary<string, ClientData> Clients = new Dictionary<string, ClientData>();
-		internal Dictionary<string, ClientData> ClientInit = new Dictionary<string, ClientData>();
-		internal Queue<Tuple<string, ClientData>> AddClientQueue = new Queue<Tuple<string, ClientData>>();
-
+		private UdpClient m_Server;
+		
 		public Action<User> OnUserJoined, OnUserLeft;
 		public Action TransformUpdate, LateUpdate;
 
@@ -58,7 +57,6 @@ namespace pNetworkStack.Server
 			return new UDPServer(endPoint);
 		}
 
-
 		/// <summary>
 		/// Gets the current active and running server instance
 		/// </summary>
@@ -91,9 +89,17 @@ namespace pNetworkStack.Server
 				m_TpsHandler.TransfromUpdate += TransfromUpdate;
 				m_TpsHandler.FinalUpdate += FinalUpdate;
 
+				m_Server = new UdpClient(endPoint);
+
 				// Start receiving data on UDP
-				UdpClient udpClient = new UdpClient(endPoint);
-				udpClient.BeginReceive(ReceiveCallback, udpClient);
+				ConnectionInfo connectionInfo = new ConnectionInfo()
+				{
+					UdpClient = m_Server,
+					EndPoint = endPoint,
+					Type = ConnectionType.UDP
+				};
+
+				m_Server.BeginReceive(ReceiveCallback, connectionInfo);
 
 				m_TpsHandler.StartTicker();
 
@@ -105,6 +111,32 @@ namespace pNetworkStack.Server
 			}
 		}
 
+		private void ReceiveCallback(IAsyncResult ar)
+		{
+			ConnectionInfo connectionInfo = (ConnectionInfo)ar.AsyncState;
+
+			IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, 2117);
+			byte[] data = connectionInfo.UdpClient.EndReceive(ar, ref endPoint);
+
+			// Log the client connection
+			Debugger.Log($"Data received from: {endPoint.Address}:{endPoint.Port}");
+
+			// Convert the data back to a string
+			string content = Encoding.ASCII.GetString(data);
+
+			// Check if the data is fully received if not we simply skip it
+			if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+			{
+				content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+
+				Util.ParseUdpCommand(endPoint, content,
+					(command, args) => { CommandHandler.GetHandler().ExecuteUdpServerCommand(command, args); });
+			}
+
+			// Start receiving data on UDP
+			connectionInfo.UdpClient.BeginReceive(ReceiveCallback, connectionInfo);
+		}
+
 		private void FinalUpdate()
 		{
 		}
@@ -113,24 +145,9 @@ namespace pNetworkStack.Server
 		{
 		}
 
-		private void ReceiveCallback(IAsyncResult ar)
+		public void Send(byte[] data, string endPoint)
 		{
-			// Retrieve the state object and the client socket 
-			// from the asynchronous state object
-			UdpClient udpClient = (UdpClient)ar.AsyncState;
-
-			// Read data from the remote device.
-			IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, 2117);
-			byte[] data = udpClient.EndReceive(ar, ref endPoint);
-
-			// Handle the data
-			// HandleData(data, endPoint);
-
-			// Log the senders endpoint
-			Debugger.Log($"Received data from: {endPoint.Address}:{endPoint.Port}");
-
-			// Start receiving data again
-			udpClient.BeginReceive(ReceiveCallback, udpClient);
+			m_Server.Send(data, data.Length, Util.GetIpEndPoint(endPoint));
 		}
 	}
 }

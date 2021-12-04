@@ -9,17 +9,24 @@ namespace pNetworkStack.Commands
 	public class CommandHandler
 	{
 		private static CommandHandler Instance;
-		private Dictionary<string, MethodInfo> m_ServerCommands = new Dictionary<string, MethodInfo>();
+		private Dictionary<string, MethodInfo> m_TcpServerCommands = new Dictionary<string, MethodInfo>();
+		private Dictionary<string, MethodInfo> m_UdpServerCommands = new Dictionary<string, MethodInfo>();
 		private Dictionary<string, MethodInfo> m_ClientCommands = new Dictionary<string, MethodInfo>();
 
 		private CommandHandler()
 		{
-			IEnumerable<MethodInfo> serverCommandsEnum = GetMethodsWithAttribute(typeof(ServerCommand));
-
-			foreach (MethodInfo methodInfo in serverCommandsEnum)
+			IEnumerable<MethodInfo> tcpServerCommandsEnum = GetMethodsWithAttribute(typeof(TcpServerCommand));
+			foreach (MethodInfo methodInfo in tcpServerCommandsEnum)
 			{
-				ServerCommand serverCommand = (ServerCommand)methodInfo.GetCustomAttribute(typeof(ServerCommand));
-				m_ServerCommands.Add(serverCommand.GetCommand(), methodInfo);
+				TcpServerCommand tcpServerCommand = (TcpServerCommand)methodInfo.GetCustomAttribute(typeof(TcpServerCommand));
+				m_TcpServerCommands.Add(tcpServerCommand.GetCommand(), methodInfo);
+			}
+			
+			IEnumerable<MethodInfo> udpServerCommandsEnum = GetMethodsWithAttribute(typeof(UdpServerCommand));
+			foreach (MethodInfo methodInfo in udpServerCommandsEnum)
+			{
+				UdpServerCommand udpServerCommand = (UdpServerCommand)methodInfo.GetCustomAttribute(typeof(UdpServerCommand));
+				m_UdpServerCommands.Add(udpServerCommand.GetCommand(), methodInfo);
 			}
 			
 			IEnumerable<MethodInfo> clientCommandsEnum = GetMethodsWithAttribute(typeof(ClientCommand));
@@ -45,15 +52,38 @@ namespace pNetworkStack.Commands
 		/// <param name="command">The command that you want to use</param>
 		/// <param name="args">The parameters that come with it</param>
 		/// <returns>If the command was found and executed</returns>
-		public bool ExecuteServerCommand(string command, object[] args = null)
+		public bool ExecuteTcpServerCommand(string command, object[] args = null)
 		{
 			try
 			{
-				if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null)
+				if (!m_TcpServerCommands.ContainsKey(command) || m_TcpServerCommands[command].DeclaringType == null)
 					return false;
 
-				m_ServerCommands[command]
-					.Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
+				m_TcpServerCommands[command]
+					.Invoke(Activator.CreateInstance(m_TcpServerCommands[command].DeclaringType), args);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
+		}
+		
+		/// <summary>
+		/// Execute a server registered command using the [ServerCommand(commandName)] Attribute
+		/// </summary>
+		/// <param name="command">The command that you want to use</param>
+		/// <param name="args">The parameters that come with it</param>
+		/// <returns>If the command was found and executed</returns>
+		public bool ExecuteUdpServerCommand(string command, object[] args = null)
+		{
+			try
+			{
+				if (!m_UdpServerCommands.ContainsKey(command) || m_UdpServerCommands[command].DeclaringType == null)
+					return false;
+
+				m_UdpServerCommands[command]
+					.Invoke(Activator.CreateInstance(m_UdpServerCommands[command].DeclaringType), args);
 				return true;
 			}
 			catch (Exception ex)

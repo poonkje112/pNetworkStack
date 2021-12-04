@@ -2,12 +2,11 @@ using System;
 
 namespace pNetworkStack.Commands
 {
-	[AttributeUsage(AttributeTargets.Method)]
-	public class ServerCommand : Attribute
+	public class UdpServerCommand : Attribute
 	{
 		private readonly string m_Command;
 		
-		public ServerCommand(string command)
+		public UdpServerCommand(string command)
 		{
 			m_Command = command;
 		}

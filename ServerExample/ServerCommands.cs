@@ -6,28 +6,28 @@ namespace ServerExample
 {
 	public class ServerCommands
 	{
-		[ServerCommand("pl_shoot")]
+		[TcpServerCommand("pl_shoot")]
 		public void Shoot(User sender, string[] args)
 		{
-			Server.GetCurrent().SendRPC(sender, $"shoot {sender.UUID}");
+			TCPServer.GetCurrent().SendRPC(sender, $"shoot {sender.UUID}");
 		}
 
-		[ServerCommand("pl_hit")]
+		[TcpServerCommand("pl_hit")]
 		public void Hit(User sender, string[] args)
 		{
-			Server.GetCurrent().Send(sender, $"damage {args[1]}");
+			TCPServer.GetCurrent().Send(sender, $"damage {args[1]}");
 		}
 
-		[ServerCommand("pl_respawn")]
+		[TcpServerCommand("pl_respawn")]
 		public void Respawn(User sender, string[] args)
 		{
 			if (Program.m_Red.Player.Equals(sender))
 			{
-				Server.GetCurrent().Send(sender, $"pl_respawn {Program.m_Red.Respawn()}");
+				TCPServer.GetCurrent().Send(sender, $"pl_respawn {Program.m_Red.Respawn()}");
 			}
 			else
 			{
-				Server.GetCurrent().Send(sender, $"pl_respawn {Program.m_Blu.Respawn()}");
+				TCPServer.GetCurrent().Send(sender, $"pl_respawn {Program.m_Blu.Respawn()}");
 			}
 		}
 	}

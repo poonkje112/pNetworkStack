@@ -33,18 +33,18 @@ namespace ServerExample
 				maxZ = -20
 			};
 
-			Server server = Server.CreateServer(4007);
+			TCPServer tcpServer = TCPServer.CreateServer(4007);
 
-			server.OnUserJoined += OnUserJoined;
-			server.OnUserLeft += OnUserLeft;
+			tcpServer.OnUserJoined += OnUserJoined;
+			tcpServer.OnUserLeft += OnUserLeft;
 
-			while (server.IsRunning)
+			while (tcpServer.IsRunning)
 			{
 				string message = Console.ReadLine();
 
 				if (string.IsNullOrEmpty(message)) continue;
 
-				Server.GetCurrent().SendRPC(null, message);
+				TCPServer.GetCurrent().SendRPC(null, message);
 			}
 
 			Console.ReadLine();
@@ -60,7 +60,7 @@ namespace ServerExample
 		{
 			if (m_PlayerCount + 1 > 2)
 			{
-				Server.GetCurrent().Send(connectedClient, "pl_disconnect full");
+				TCPServer.GetCurrent().Send(connectedClient, "pl_disconnect full");
 			}
 			else
 			{
@@ -70,12 +70,12 @@ namespace ServerExample
 				if (m_PlayerCount == 1)
 				{
 					m_Red.Player = connectedClient;
-					Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Red.Respawn()}");
+					TCPServer.GetCurrent().Send(connectedClient, $"pl_respawn {m_Red.Respawn()}");
 				}
 				else
 				{
 					m_Blu.Player = connectedClient;
-					Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Blu.Respawn()}");
+					TCPServer.GetCurrent().Send(connectedClient, $"pl_respawn {m_Blu.Respawn()}");
 				}
 			}
 		}

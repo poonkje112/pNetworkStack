@@ -33,5 +33,18 @@ namespace UDPClientExample
 		{
 			Debugger.OnInfo.Invoke("Lobby does not exist!");
 		}
+		
+		[ClientCommand("srv_welcome")]
+		public void OnWelcome(string[] args)
+		{
+			Debugger.OnInfo.Invoke($"We have joined the server!");
+		}
+		
+		[ClientCommand("srv_full")]
+		public void OnServerFull(string[] args)
+		{
+			Debugger.OnInfo.Invoke("Server is full!");
+		}
+		
 	}
 }

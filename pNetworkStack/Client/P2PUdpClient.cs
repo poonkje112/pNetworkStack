@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using pNetworkStack.Commands;
 using pNetworkStack.Core;
 using pNetworkStack.Core.Data;
 
@@ -46,19 +48,17 @@ namespace pNetworkStack.client
 			try
 			{
 				Debugger.Log("Connecting to Lobby...");
+
 				// Connect to our lobby server
 				m_Client.Connect("127.0.0.1", 2117);
-				
-				Debugger.Log($"Connected to Lobby!");
-
 
 				m_IsReady = true;
 
 				m_Client.BeginReceive(ReceiveCallback, null);
 
-				// Convert string to byte array
-				byte[] data = Encoding.ASCII.GetBytes("Hello, World!");
-				m_Client.Send(data, data.Length);
+				// Send join message
+
+				Send("pl_join");
 			}
 			catch (Exception ex)
 			{
@@ -68,13 +68,31 @@ namespace pNetworkStack.client
 
 		private void ReceiveCallback(IAsyncResult ar)
 		{
+			IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
+			byte[] data = m_Client.EndReceive(ar, ref endPoint);
+
+			// Decode the message
+			string content = Encoding.ASCII.GetString(data);
+
+			if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+			{
+				content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+
+				// Parse the command to the parser
+				Util.ParseCommand(content,
+					(command, parameters) =>
+					{
+						CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
+					});
+			}
+
+			m_Client.BeginReceive(ReceiveCallback, null);
 		}
 
 		public void Send(string data)
 		{
-			byte[] bytes = Encoding.ASCII.GetBytes(data);
-			var result = m_Client.SendAsync(bytes, bytes.Length);
-			result.Wait();
+			byte[] bytes = Encoding.ASCII.GetBytes(data + "<EOF>");
+			m_Client.Send(bytes, bytes.Length);
 		}
 	}
 }

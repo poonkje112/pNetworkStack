@@ -14,7 +14,7 @@ namespace UDPClientExample
 			while (client.IsReady)
 			{
 				string message = Console.ReadLine();
-				
+				message += "<EOF>";
 				if(string.IsNullOrEmpty(message)) continue;
 				
 				Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - 1);

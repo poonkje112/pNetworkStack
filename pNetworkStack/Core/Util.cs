@@ -71,6 +71,27 @@ namespace pNetworkStack.Core
 			callback.Invoke(command, param.ToArray());
 		}
 
+		internal static void ParseUdpCommand(IPEndPoint endPoint, string message, Action<string, object[]> callback)
+		{
+			List<object> param = new List<object>();
+
+			// Check if the sender is available, if so we add it as the first parameter
+			if (endPoint != null) param.Add(endPoint.ToString());
+
+			// Split every word by space and temporarily store it
+			List<string> data = message.Split(' ').ToList();
+
+			// The first element is always the command
+			string command = data[0];
+			data.RemoveAt(0);
+
+			// The all other elements are parameters so add this as a string array
+			param.Add(data.ToArray());
+
+			// Invoke the callback and convert our param list to an object array
+			callback.Invoke(command, param.ToArray());
+		}
+
 		internal static IPEndPoint GetIpEndPoint(string endPoint)
 		{
 			// Convert the string to an IPEndPoint
