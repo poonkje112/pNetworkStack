@@ -44,7 +44,7 @@ namespace UDPHolePunchTest
 				}
 				else
 				{
-					data = Encoding.ASCII.GetBytes(result.RemoteEndPoint.ToString());
+					data = Encoding.ASCII.GetBytes(m_Host);
 					await m_Client.SendAsync(data, data.Length, result.RemoteEndPoint);
 				}
 			}

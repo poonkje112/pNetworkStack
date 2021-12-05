@@ -22,18 +22,7 @@ namespace UDPHolePunchTest
 			IsHost = host;
 			m_Client = new UdpClient();
 
-			// If we are the host we should allow the client to connect to us
-			if (host)
-			{
-				m_Client.AllowNatTraversal(true);
-				m_Client.ExclusiveAddressUse = false;
-				m_Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-			}
-			else
-			{
-				m_Client.Connect(ip, port);
-			}
-
+			m_Client.Connect(ip, port);
 
 			m_ReceiveThread = Task.Run(() => Receive());
 		}
@@ -41,6 +30,10 @@ namespace UDPHolePunchTest
 		public void StartServer(IPEndPoint endPoint)
 		{
 			m_Client = new UdpClient(endPoint);
+			
+			// Allow the client to receive data from any sender.
+			m_Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+			
 			m_LobbyServer = false;
 			m_ReceiveThread = Task.Run(() => Receive());
 		}
@@ -52,7 +45,7 @@ namespace UDPHolePunchTest
 				try
 				{
 					if (m_ReceiveThread.IsCanceled) return;
-					
+
 					UdpReceiveResult received = await m_Client.ReceiveAsync();
 					string message = Encoding.ASCII.GetString(received.Buffer, 0, received.Buffer.Length);
 
@@ -60,7 +53,6 @@ namespace UDPHolePunchTest
 					{
 						m_LobbyServer = false;
 						Host();
-						continue;
 					}
 
 					if (m_LobbyServer && !IsHost)
@@ -97,8 +89,8 @@ namespace UDPHolePunchTest
 			// Cancel the receive thread
 			m_ReceiveThread.Dispose();
 
-			IPEndPoint endPoint = m_Client.Client.RemoteEndPoint as IPEndPoint;
-			m_Client.Dispose();
+			IPEndPoint endPoint = m_Client.Client.LocalEndPoint as IPEndPoint;
+			m_Client.Close();
 
 			IsHost = true;
 
