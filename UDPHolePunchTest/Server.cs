@@ -39,6 +39,10 @@ namespace UDPHolePunchTest
 				byte[] data = Encoding.ASCII.GetBytes("You are now the host!");
 				if (string.IsNullOrEmpty(m_Host))
 				{
+					// Remove the command from the message
+					// message = message.Substring(message.IndexOf("external_data", StringComparison.Ordinal) + "external_data".Length);
+					
+					// Convert the message to an ip and port
 					m_Host = result.RemoteEndPoint.ToString();
 					await m_Client.SendAsync(data, data.Length, result.RemoteEndPoint);
 				}

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,25 +19,28 @@ namespace UDPHolePunchTest
 
 		Task m_ReceiveThread;
 
-		public void Connect(string ip, int port, bool host)
+		string m_ServerIp;
+		int m_ServerPort;
+
+		public async void Connect(string serverIp, int serverPort, bool host)
 		{
 			IsHost = host;
+
+			// Create a new UdpClient with the newly mapped port.
 			m_Client = new UdpClient();
 
-			m_Client.Connect(ip, port);
+			m_ServerIp = serverIp;
+			m_ServerPort = serverPort;
 
-			m_ReceiveThread = Task.Run(() => Receive());
-		}
-
-		public void StartServer(IPEndPoint endPoint)
-		{
-			m_Client = new UdpClient(endPoint);
-			
-			// Allow the client to receive data from any sender.
 			m_Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-			
-			m_LobbyServer = false;
-			m_ReceiveThread = Task.Run(() => Receive());
+			m_Client.AllowNatTraversal(true);
+			m_Client.Client.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
+
+			// Receive data without having to bind the socket
+			m_ReceiveThread = new Task(Receive);
+
+			Send($"Hello, World!");
+			m_ReceiveThread.Start();
 		}
 
 		private async void Receive()
@@ -44,10 +49,10 @@ namespace UDPHolePunchTest
 			{
 				try
 				{
-					if (m_ReceiveThread.IsCanceled) return;
-
-					UdpReceiveResult received = await m_Client.ReceiveAsync();
-					string message = Encoding.ASCII.GetString(received.Buffer, 0, received.Buffer.Length);
+					IPEndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+					UdpReceiveResult data = await m_Client.ReceiveAsync();
+					remoteEP = data.RemoteEndPoint;
+					string message = Encoding.ASCII.GetString(data.Buffer, 0, data.Buffer.Length);
 
 					if (m_LobbyServer && message == "You are now the host!")
 					{
@@ -58,18 +63,16 @@ namespace UDPHolePunchTest
 					if (m_LobbyServer && !IsHost)
 					{
 						string[] split = message.Split(':');
-						IPAddress ip = IPAddress.Parse(split[0]);
+						string ip = split[0].Replace(" ", "");
 						int port = int.Parse(split[1]);
 
-						// Disconnect from the server and connect to the ip and port
-						m_Client.Dispose();
-						m_Client = new UdpClient();
-						m_Client.Connect(ip, port);
+						m_ServerIp = ip;
+						m_ServerPort = port;
 
 						m_LobbyServer = false;
 					}
 
-					Console.WriteLine($"[{received.RemoteEndPoint}] Received: " + message);
+					Console.WriteLine($"[{remoteEP}] Received: " + message);
 				}
 				catch (Exception ex)
 				{
@@ -78,23 +81,28 @@ namespace UDPHolePunchTest
 			}
 		}
 
-		public void Send(string message)
+		public void StartServer()
 		{
+			Console.WriteLine("Started listening on " + m_Client.Client.LocalEndPoint);
+			m_LobbyServer = false;
+		}
+
+
+		public async void Send(string message)
+		{
+			// Send the message to the server
 			byte[] data = Encoding.ASCII.GetBytes(message);
-			m_Client.Send(data, data.Length);
+			await m_Client.SendAsync(data, data.Length, m_ServerIp.ToString(), m_ServerPort);
 		}
 
 		public void Host()
 		{
-			// Cancel the receive thread
-			m_ReceiveThread.Dispose();
-
-			IPEndPoint endPoint = m_Client.Client.LocalEndPoint as IPEndPoint;
-			m_Client.Close();
-
 			IsHost = true;
+			StartServer();
+		}
 
-			StartServer(endPoint);
+		public async void Cleanup()
+		{
 		}
 	}
 }
