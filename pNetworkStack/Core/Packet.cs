@@ -11,7 +11,10 @@ namespace pNetworkStack.Core
 		public static readonly byte[] BeginHeader = Encoding.ASCII.GetBytes("<Packet>");
 		public static readonly byte[] EndHeader = Encoding.ASCII.GetBytes("</Packet>");
 		private static readonly byte[] Seperator = Encoding.ASCII.GetBytes("|");
-		
+
+		private byte[] m_SerializedPacket;
+		private int m_SerializedPacketDestinationIndex;
+
 		private string m_Command;
 		private byte[] m_Data;
 
@@ -50,40 +53,25 @@ namespace pNetworkStack.Core
 		{
 			byte[] command = Encoding.ASCII.GetBytes(m_Command);
 			byte[] data = m_Data;
-			
-			byte[] packet = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length + (Seperator.Length * 3)];
 
-			int index = 0;
+			m_SerializedPacket = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length + (Seperator.Length * 3)];
+			m_SerializedPacketDestinationIndex = 0;
+
+			MergePacket(BeginHeader);
+			MergePacket(Seperator);
+			MergePacket(command);
+			MergePacket(Seperator);
+			MergePacket(data);
+			MergePacket(Seperator);
+			MergePacket(EndHeader);
 			
-			// Begin header
-			Array.Copy(BeginHeader, 0, packet, index, BeginHeader.Length);
-			index += BeginHeader.Length;
-			
-			// Separator
-			Array.Copy(Seperator, 0, packet, index, Seperator.Length);
-			index += Seperator.Length;
-			
-			// Command
-			Array.Copy(command, 0, packet, index, command.Length);
-			index += command.Length;
-			
-			// Separator
-			Array.Copy(Seperator, 0, packet, index, Seperator.Length);
-			index += Seperator.Length;
-			
-			// Data
-			Array.Copy(data, 0, packet, index, data.Length);
-			index += data.Length;
-			
-			// Separator
-			Array.Copy(Seperator, 0, packet, index, Seperator.Length);
-			index += Seperator.Length;
-			
-			// End header
-			Array.Copy(EndHeader, 0, packet, index, EndHeader.Length);
-			index += EndHeader.Length;
-			
-			return packet;
+			return m_SerializedPacket;
+		}
+
+		private void MergePacket(Array sourceArray)
+        {
+			Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
+			m_SerializedPacketDestinationIndex += sourceArray.Length;
 		}
 
 		public static Packet DeserializePacket(byte[] data)
