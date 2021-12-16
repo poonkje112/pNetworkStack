@@ -58,21 +58,25 @@ namespace pNetworkStack.Core
 			m_SerializedPacketDestinationIndex = 0;
 
 			MergePacket(BeginHeader);
-			MergePacket(Seperator);
 			MergePacket(command);
-			MergePacket(Seperator);
 			MergePacket(data);
-			MergePacket(Seperator);
-			MergePacket(EndHeader);
+			MergePacket(EndHeader, false);
 			
 			return m_SerializedPacket;
 		}
 
-		private void MergePacket(Array sourceArray)
+		
+		private void MergePacket(Array sourceArray, bool includeSeperator = true)
         {
-			Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
-			m_SerializedPacketDestinationIndex += sourceArray.Length;
-		}
+	        if (sourceArray == null)
+		        return;
+	        
+	        Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
+	        m_SerializedPacketDestinationIndex += sourceArray.Length;
+	        
+	        if (includeSeperator)
+		        MergePacket(Seperator, false);
+        }
 
 		public static Packet DeserializePacket(byte[] data)
 		{
