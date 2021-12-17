@@ -72,7 +72,8 @@ namespace UDPServerLobbyExample
 				{
 					if(player.Equals(joinedPlayer)) continue;
 					
-					Server.GetCurrent().Send(player.PlayerData, $"cl_lobby_player_joined {joinedPlayer.PlayerData.Username}");
+					// Server.GetCurrent().Send(player.PlayerData, $"cl_lobby_player_joined {joinedPlayer.PlayerData.Username}");
+					Server.GetCurrent().Send(player.PlayerData, new Packet($"cl_lobby_player_joined {joinedPlayer.PlayerData.Username}"));
 				}
 				
 				m_Users.Add(user, lobbyId);
@@ -80,7 +81,8 @@ namespace UDPServerLobbyExample
 			else
 			{
 				// Send lobby does not exist message
-				Server.GetCurrent().Send(user, "cl_lobby_does_not_exist");
+				// Server.GetCurrent().Send(user, "cl_lobby_does_not_exist");
+				Server.GetCurrent().Send(user, new Packet("cl_lobby_does_not_exist"));
 			}
 		}
 		
@@ -101,7 +103,8 @@ namespace UDPServerLobbyExample
 				foreach(Player player in lobby.Players)
 				{
 					User receiver = player.PlayerData;
-					Server.GetCurrent().Send(receiver, $"cl_lobby_player_left {leaver.PlayerData.Username}");
+					// Server.GetCurrent().Send(receiver, $"cl_lobby_player_left {leaver.PlayerData.Username}");
+					Server.GetCurrent().Send(receiver, new Packet($"cl_lobby_player_left {leaver.PlayerData.Username}"));
 				}
 			}
 		}

@@ -122,26 +122,38 @@ namespace pNetworkStack.client
 				// Check if there is any data to process
 				if (bytesToRead > 0)
 				{
-					// Apply the received data to the string builder
-					data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
-
-					// Check if we have reached the end
-					string content = data.Builder.ToString();
-					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+					if (data.PushData(data.Buffer, bytesToRead))
 					{
-						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+						Packet p = data.PopPacket();
+						Util.ParseCommand(data.UserData, p.Command, (command, parameters) =>
+						{ 
+							CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
+						});
 
-						// Parse the command to the parser
-						Util.ParseCommand(content,
-							(command, parameters) =>
-							{
-								CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
-							});
-						
-						// Clear the buffer and builder to prepare for new data
+						data.ClearData();
 						data.Buffer = new byte[ClientData.BufferSize];
-						data.Builder.Clear();
 					}
+					
+					// Apply the received data to the string builder
+					// data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
+					//
+					// // Check if we have reached the end
+					// string content = data.Builder.ToString();
+					// if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+					// {
+					// 	content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+					//
+					// 	// Parse the command to the parser
+					// 	Util.ParseCommand(content,
+					// 		(command, parameters) =>
+					// 		{
+					// 			CommandHandler.GetHandler().ExecuteClientCommand(command, parameters);
+					// 		});
+					// 	
+					// 	// Clear the buffer and builder to prepare for new data
+					// 	data.Buffer = new byte[ClientData.BufferSize];
+					// 	data.Builder.Clear();
+					// }
 				}
 
 				// Start receiving again
@@ -159,9 +171,12 @@ namespace pNetworkStack.client
 		/// Send a message/command to the server
 		/// </summary>
 		/// <param name="message">The message that needs to get sent</param>
+		[Obsolete("Use Send(Packet) instead")]
 		public void Send(string message)
 		{
-			Send(message, null);
+			// Send(message, null);
+			
+			Send(new Packet(message));
 		}
 		
 		/// <summary>
@@ -169,13 +184,29 @@ namespace pNetworkStack.client
 		/// </summary>
 		/// <param name="message">The message that needs to get sent</param>
 		/// <param name="onSendDone">This will be executed when the message has been sent</param>
+		[Obsolete("Use Send(Packet, Action) instead")]
 		public void Send(string message, Action onSendDone)
 		{
 			// If the message already contains <EOF> then remove it.
-			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+			// if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+			//
+			// byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
+			//
+			// SendObject sendObject = new SendObject()
+			// {
+			// 	Socket = m_Client,
+			// 	OnSendDone = onSendDone
+			// };
+			//
+			// m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, sendObject);
+			
+			Send(new Packet(message), onSendDone);
+		}
 
-			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
-
+		public void Send(Packet packet, Action onSendDone = null)
+		{
+			byte[] data = packet.SerializePacket();
+			
 			SendObject sendObject = new SendObject()
 			{
 				Socket = m_Client,

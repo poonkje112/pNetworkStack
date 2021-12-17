@@ -58,9 +58,11 @@ namespace ServerExample
 
 		private static void OnUserJoined(User connectedClient)
 		{
+			Packet packet = new Packet();
 			if (m_PlayerCount + 1 > 2)
 			{
-				Server.GetCurrent().Send(connectedClient, "pl_disconnect full");
+				// Server.GetCurrent().Send(connectedClient, "pl_disconnect full");
+				packet.SetCommand("pl_disconnect full");
 			}
 			else
 			{
@@ -70,14 +72,18 @@ namespace ServerExample
 				if (m_PlayerCount == 1)
 				{
 					m_Red.Player = connectedClient;
-					Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Red.Respawn()}");
+					// Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Red.Respawn()}");
+					packet.SetCommand($"pl_respawn {m_Red.Respawn()}");
 				}
 				else
 				{
 					m_Blu.Player = connectedClient;
-					Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Blu.Respawn()}");
+					// Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Blu.Respawn()}");
+					packet.SetCommand($"pl_respawn {m_Blu.Respawn()}");
 				}
 			}
+			
+			Server.GetCurrent().Send(connectedClient, packet);
 		}
 
 		private static void InitializeDebugger()

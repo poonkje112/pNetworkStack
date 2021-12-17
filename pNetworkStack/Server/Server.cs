@@ -33,7 +33,7 @@ namespace pNetworkStack.Server
 		public Action<User> OnUserJoined, OnUserLeft;
 		public Action TransformUpdate, LateUpdate;
 
-		internal Action<byte[], User> OnSendRPC;
+		internal Action<Packet, User> OnSendRPC;
 
 		/// <summary>
 		/// Creates and starts a server on the specified port
@@ -106,10 +106,10 @@ namespace pNetworkStack.Server
 					users.Add(clientsValue.UserData);
 				}
 
-				byte[] dataToSend =
-					Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}<EOF>");
-
-				data.Item2.SendData(dataToSend);
+				// byte[] dataToSend =
+					// Encoding.ASCII.GetBytes($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}<EOF>");
+				
+				data.Item2.SendData(new Packet($"pl_add_bulk {JsonConvert.SerializeObject(users.ToArray())}"));
 
 				Clients.Add(data.Item1, data.Item2);
 				OnSendRPC += Clients[data.Item2.UserData.UUID].SendData;
@@ -121,7 +121,7 @@ namespace pNetworkStack.Server
 		private void AcceptClient(IAsyncResult ar)
 		{
 			// Gets the socket that handles the requests
-			TcpListener listener = (TcpListener) ar.AsyncState;
+			TcpListener listener = (TcpListener)ar.AsyncState;
 			Socket client = listener.EndAcceptSocket(ar);
 
 			// Save the client data for async use
@@ -148,7 +148,8 @@ namespace pNetworkStack.Server
 			// Start receiving data
 			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
 
-			Send(client, $"pl_init {randomUID}", true);
+			// Send(client, $"pl_init {randomUID}", true);
+			Send(client, new Packet($"pl_init {randomUID}"), true);
 
 			// Restart the waiting for a new connection
 			listener.BeginAcceptSocket(AcceptClient, listener);
@@ -157,7 +158,7 @@ namespace pNetworkStack.Server
 		private void ReadCallback(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
-			ClientData data = (ClientData) ar.AsyncState;
+			ClientData data = (ClientData)ar.AsyncState;
 
 			try
 			{
@@ -169,26 +170,38 @@ namespace pNetworkStack.Server
 				// Check if there is any data to process
 				if (bytesToRead > 0)
 				{
+					if (data.PushData(data.Buffer, bytesToRead))
+					{
+						Packet p = data.PopPacket();
+						Util.ParseCommand(data.UserData, p.Command, (command, parameters) =>
+						{ 
+							CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
+						});
+
+						data.ClearData();
+						data.Buffer = new byte[ClientData.BufferSize];
+					}
+
 					// Apply the received data to the string builder
-					data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
+					// data.Builder.Append(Encoding.ASCII.GetString(data.Buffer, 0, bytesToRead));
 
 					// Check if we have reached the end
-					string content = data.Builder.ToString();
-					if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
-					{
-						content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
-
-						// Parse the command to the parser
-						Util.ParseCommand(data.UserData, content,
-							(command, parameters) =>
-							{
-								CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
-							});
-
-						// Clear the buffer and builder to prepare for new data
-						data.Buffer = new byte[ClientData.BufferSize];
-						data.Builder.Clear();
-					}
+					// string content = data.Builder.ToString();
+					// if (content.IndexOf("<EOF>", StringComparison.Ordinal) > -1)
+					// {
+					// 	content = content.Substring(0, content.IndexOf("<EOF>", StringComparison.Ordinal));
+					//
+					// 	// Parse the command to the parser
+					// 	Util.ParseCommand(data.UserData, content,
+					// 		(command, parameters) =>
+					// 		{
+					// 			CommandHandler.GetHandler().ExecuteServerCommand(command, parameters);
+					// 		});
+					//
+					// 	// Clear the buffer and builder to prepare for new data
+					// 	data.Builder.Clear();
+					//  data.Buffer = new byte[ClientData.BufferSize];
+					// }
 				}
 
 				// Start receiving again
@@ -200,20 +213,16 @@ namespace pNetworkStack.Server
 				DisconnectClient(data.UserData.UUID);
 			}
 		}
-
-		public void Send(User receiver, string message, bool init = false)
-		{
-			Send(Clients[receiver.UUID].WorkClient, message, init);
-		}
-
+		
+		[Obsolete("Use Send(User, Packet, bool) instead")]
 		internal void Send(Socket receiver, string message, bool init = false)
 		{
 			// If the message already contains <EOF> then remove it.
-			if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
+			// if (message.Contains("<EOF>")) message = message.Replace("<EOF>", "");
 
 			// Convert the message to bytes
-			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
-
+			// byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
+			
 			Dictionary<string, ClientData> clientDict;
 
 			if (init)
@@ -225,7 +234,7 @@ namespace pNetworkStack.Server
 			{
 				if (u.WorkClient == receiver)
 				{
-					u.SendData(data);
+					u.SendData(new Packet(message));
 					break;
 				}
 			}
@@ -236,6 +245,7 @@ namespace pNetworkStack.Server
 		/// </summary>
 		/// <param name="sender">The client that is sending this</param>
 		/// <param name="message">The message</param>
+		[Obsolete("Use SendRPC(User, Packet) instead")]
 		public void SendRPC(User sender, string message)
 		{
 			// If the message already contains <EOF> then remove it.
@@ -244,15 +254,40 @@ namespace pNetworkStack.Server
 			// Convert the message to bytes
 			byte[] data = Encoding.ASCII.GetBytes(message + "<EOF>");
 
-			OnSendRPC?.Invoke(data, sender);
+			OnSendRPC?.Invoke(new Packet(message), sender);
+		}
+		
+		public void Send(User receiver, Packet packet, bool init = false)
+		{
+			Send(Clients[receiver.UUID].WorkClient, packet, init);
+		}
+
+		internal void Send(Socket receiver, Packet packet, bool init = false)
+		{
+			Dictionary<string, ClientData> clientDict;
+
+			clientDict = init ? ClientInit : Clients;
+
+			foreach (ClientData u in clientDict.Values.Where(u => u.WorkClient == receiver))
+			{
+				u.SendData(packet);
+				break;
+			}
+		}
+
+		public void SendRPC(User sender, Packet packet)
+		{
+			OnSendRPC?.Invoke(packet, sender);
 		}
 
 		public void DisconnectClient(string uid)
 		{
 			ClientData sender = Clients[uid];
 
-			SendRPC(sender.UserData, $"pl_remove {uid}");
+			// SendRPC(sender.UserData, $"pl_remove {uid}");
 
+			SendRPC(sender.UserData, new Packet($"pl_remove {uid}"));
+			
 			OnSendRPC -= Clients[uid].SendData;
 
 			Clients.Remove(uid);

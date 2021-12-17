@@ -16,7 +16,8 @@ namespace pNetworkStack.Server.Commands
 		{
 			if (args == null || args.Length <= 0) return;
 
-			Server.GetCurrent().SendRPC(sender, "say " + Util.Join(' ', args));
+			// Server.GetCurrent().SendRPC(sender, "say " + Util.Join(' ', args));
+			Server.GetCurrent().SendRPC(sender, new Packet($"say {sender.UUID} {Util.Join(' ', args)}"));
 		}
 
 		[ServerCommand("pl_init")]
@@ -29,7 +30,8 @@ namespace pNetworkStack.Server.Commands
 			Server.GetCurrent().ClientInit[data.UUID].UserData = data;
 
 			// Telling everyone a new player has joined
-			Server.GetCurrent().SendRPC(sender, $"pl_add {JsonConvert.SerializeObject(data)}");
+			// Server.GetCurrent().SendRPC(sender, $"pl_add {JsonConvert.SerializeObject(data)}");
+			Server.GetCurrent().SendRPC(sender, new Packet($"pl_add {JsonConvert.SerializeObject(data)}"));
 
 			// Queue the new player to be taken into the update loop in the next tick
 			Server.GetCurrent().AddClientQueue
@@ -48,7 +50,8 @@ namespace pNetworkStack.Server.Commands
 
 			User u = Server.GetCurrent().Clients[uid].UserData;
 
-			Server.GetCurrent().SendRPC(sender, $"pl_update_position {uid} {u.GetPosition()}");
+			// Server.GetCurrent().SendRPC(sender, $"pl_update_position {uid} {u.GetPosition()}");
+			Server.GetCurrent().SendRPC(sender, new Packet($"pl_update_position {uid} {u.GetPosition()}"));
 		}
 
 		[ServerCommand("pl_update_euler")]
@@ -62,7 +65,9 @@ namespace pNetworkStack.Server.Commands
 
 			User u = Server.GetCurrent().Clients[uid].UserData;
 
-			Server.GetCurrent().SendRPC(sender, $"pl_update_euler {u.UUID} {u.GetEuler()}");
+			Server.GetCurrent().SendRPC(sender, new Packet($"pl_update_euler {u.UUID} {u.GetEuler()}"));
+
+			// Server.GetCurrent().SendRPC(sender, $"pl_update_euler {u.UUID} {u.GetEuler()}");
 		}
 		
 		[ServerCommand("pl_update_transform")]
@@ -77,8 +82,8 @@ namespace pNetworkStack.Server.Commands
 			Server.GetCurrent().Clients[uid].UserData.UpdateEuler(euler);
 
 			User u = Server.GetCurrent().Clients[uid].UserData;
-
-			Server.GetCurrent().SendRPC(sender, $"pl_update_transform {u.UUID} {u.GetPosition()} {u.GetEuler()}");
+			
+			Server.GetCurrent().SendRPC(sender, new Packet($"pl_update_transform {u.UUID} {u.GetPosition()} {u.GetEuler()}"));
 		}
 
 		[ServerCommand("pl_disconnect")]
@@ -98,9 +103,11 @@ namespace pNetworkStack.Server.Commands
 
 				users.Add(clientsValue.UserData);
 			}
-
-			Server.GetCurrent().Send(Server.GetCurrent().Clients[sender.UUID].WorkClient,
-				$"sync_list {JsonConvert.SerializeObject(users.ToArray())}");
+			
+			Server.GetCurrent().Send(Server.GetCurrent().Clients[sender.UUID].WorkClient, new Packet($"sync_list {JsonConvert.SerializeObject(users.ToArray())}"));
+			
+			// Server.GetCurrent().Send(Server.GetCurrent().Clients[sender.UUID].WorkClient,
+				// $"sync_list {JsonConvert.SerializeObject(users.ToArray())}");
 		}
 	}
 }

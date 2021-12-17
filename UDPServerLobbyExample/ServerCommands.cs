@@ -37,7 +37,10 @@ namespace UDPServerLobbyExample
 		{
 			LobbyManager lobbyManager = LobbyManager.GetLobbyManager();
 			Lobby lobby = lobbyManager.CreateLobby(sender);
-			Server.GetCurrent().Send(sender, $"cl_lobby_created {lobby.LobbyId}");
+			// Server.GetCurrent().Send(sender, $"cl_lobby_created {lobby.LobbyId}");
+			
+			Server.GetCurrent().Send(sender, new Packet($"cl_lobby_created {lobby.LobbyId}"));
+			
 			Debugger.OnInfo.Invoke($"Created lobby with id: {lobby.LobbyId}");
 		}
 	}
