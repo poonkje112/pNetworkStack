@@ -116,7 +116,7 @@ namespace pNetworkStack.Core
 
 			// Get the command
 			string command = String.Empty;
-			int commandStart = +BeginHeader.Length + BeginHeader.Length;
+			int commandStart = BeginHeader.Length + Separator.Length;
 			int commandEnd = end - Separator.Length;
 
 			// Loop through the array until the separator is found or the end of the packet is reached
@@ -169,7 +169,9 @@ namespace pNetworkStack.Core
 
 		public Packet(byte[] rawPacket)
 		{
-			DeserializePacket(rawPacket);
+			Packet temp = DeserializePacket(rawPacket);
+			m_Command = temp.m_Command;
+			m_Data = temp.m_Data;
 		}
 	}
 }
