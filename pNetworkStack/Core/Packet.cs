@@ -20,6 +20,19 @@ namespace pNetworkStack.Core
 		private byte[] m_Data = new byte[0];
 
 		public string Command => m_Command;
+		public byte[] PacketBytes => SerializePacket();
+
+		private void MergePacket(Array sourceArray, bool includeSeparator = true)
+		{
+			if (sourceArray == null)
+				return;
+
+			Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
+			m_SerializedPacketDestinationIndex += sourceArray.Length;
+
+			if (includeSeparator)
+				MergePacket(Separator, false);
+		}
 
 		public void SetData(object data)
 		{
@@ -57,13 +70,13 @@ namespace pNetworkStack.Core
 			m_Command = command;
 		}
 
-		public byte[] SerializePacket()
+		internal byte[] SerializePacket()
 		{
 			byte[] command = Encoding.ASCII.GetBytes(m_Command);
 			byte[] data = m_Data;
 
-			command = Compress(command);
-			data = Compress(data);
+			command = Util.Compress(command);
+			data = Util.Compress(data);
 
 			m_SerializedPacket = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length +
 			                              (Separator.Length * 3)];
@@ -77,30 +90,7 @@ namespace pNetworkStack.Core
 			return m_SerializedPacket;
 		}
 
-		// TODO Implement compression and decompression
-		internal static byte[] Compress(byte[] data)
-		{
-			return data;
-		}
-
-		internal static byte[] Decompress(byte[] data)
-		{
-			return data;
-		}
-
-		private void MergePacket(Array sourceArray, bool includeSeparator = true)
-		{
-			if (sourceArray == null)
-				return;
-
-			Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
-			m_SerializedPacketDestinationIndex += sourceArray.Length;
-
-			if (includeSeparator)
-				MergePacket(Separator, false);
-		}
-
-		public static Packet DeserializePacket(byte[] data)
+		internal static Packet DeserializePacket(byte[] data)
 		{
 			// Find the start of the packet
 			int start = 0;
@@ -142,14 +132,14 @@ namespace pNetworkStack.Core
 			byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
 			Array.Copy(data, start + BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
 
-			command = Encoding.ASCII.GetString(Decompress(commandBytes));
+			command = Encoding.ASCII.GetString(Util.Decompress(commandBytes));
 
 			// Get the data
 			int dataStart = commandEnd + Separator.Length;
 			int dataEnd = end - Separator.Length;
 			byte[] dataBytes = new byte[dataEnd - dataStart];
 			Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);
-			dataBytes = Decompress(dataBytes);
+			dataBytes = Util.Decompress(dataBytes);
 
 			// Create the packet
 			Packet packet = new Packet
@@ -175,6 +165,11 @@ namespace pNetworkStack.Core
 		{
 			SetCommand(command);
 			SetData(data);
+		}
+
+		public Packet(byte[] rawPacket)
+		{
+			DeserializePacket(rawPacket);
 		}
 	}
 }

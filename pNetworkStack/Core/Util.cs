@@ -89,5 +89,17 @@ namespace pNetworkStack.Core
 
 			return ipEndPoint;
 		}
+		
+				
+		// TODO Implement compression and decompression
+		internal static byte[] Compress(byte[] data)
+		{
+			return data;
+		}
+
+		internal static byte[] Decompress(byte[] data)
+		{
+			return data;
+		}
 	}
 }

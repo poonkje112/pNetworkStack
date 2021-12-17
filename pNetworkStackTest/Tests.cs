@@ -22,9 +22,9 @@ namespace pNetworkStackTest
 			Packet packet = new Packet();
 			packet.SetCommand("Hello, World!");
 			packet.SetData(a);
-			byte[] data = packet.SerializePacket();
-			
-			Packet result = Packet.DeserializePacket(data);
+			byte[] data = packet.PacketBytes;
+
+			Packet result = new Packet(data);
 			SampleClass resultData = result.GetData<SampleClass>();
 
 			Assert.IsFalse(a.Equals(resultData));
