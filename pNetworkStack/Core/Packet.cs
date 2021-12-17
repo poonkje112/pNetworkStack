@@ -10,7 +10,7 @@ namespace pNetworkStack.Core
 	{
 		public static readonly byte[] BeginHeader = Encoding.ASCII.GetBytes("<Packet>");
 		public static readonly byte[] EndHeader = Encoding.ASCII.GetBytes("</Packet>");
-		private static readonly byte[] Seperator = Encoding.ASCII.GetBytes("|");
+		private static readonly byte[] Separator = Encoding.ASCII.GetBytes("|");
 
 		private byte[] m_SerializedPacket;
 		private int m_SerializedPacketDestinationIndex;
@@ -54,7 +54,7 @@ namespace pNetworkStack.Core
 			byte[] command = Encoding.ASCII.GetBytes(m_Command);
 			byte[] data = m_Data;
 
-			m_SerializedPacket = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length + (Seperator.Length * 3)];
+			m_SerializedPacket = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length + (Separator.Length * 3)];
 			m_SerializedPacketDestinationIndex = 0;
 
 			MergePacket(BeginHeader);
@@ -66,7 +66,7 @@ namespace pNetworkStack.Core
 		}
 
 		
-		private void MergePacket(Array sourceArray, bool includeSeperator = true)
+		private void MergePacket(Array sourceArray, bool includeSeparator = true)
         {
 	        if (sourceArray == null)
 		        return;
@@ -74,8 +74,8 @@ namespace pNetworkStack.Core
 	        Array.Copy(sourceArray, 0, m_SerializedPacket, m_SerializedPacketDestinationIndex, sourceArray.Length);
 	        m_SerializedPacketDestinationIndex += sourceArray.Length;
 	        
-	        if (includeSeperator)
-		        MergePacket(Seperator, false);
+	        if (includeSeparator)
+		        MergePacket(Separator, false);
         }
 
 		public static Packet DeserializePacket(byte[] data)
@@ -104,12 +104,12 @@ namespace pNetworkStack.Core
 			
 			// Get the command
 			string command = String.Empty;
-			int commandEnd = end - Seperator.Length;
+			int commandEnd = end - Separator.Length;
 			
-			// Loop through the array until the seperator is found or the end of the packet is reached
-			for (int i = start + BeginHeader.Length + Seperator.Length; i < end; i++)
+			// Loop through the array until the separator is found or the end of the packet is reached
+			for (int i = start + BeginHeader.Length + Separator.Length; i < end; i++)
 			{
-				if (data[i] == Seperator[0])
+				if (data[i] == Separator[0])
 				{
 					commandEnd = i;
 					break;
@@ -119,8 +119,8 @@ namespace pNetworkStack.Core
 			}
 			
 			// Get the data
-			int dataStart = commandEnd + Seperator.Length;
-			int dataEnd = end - Seperator.Length;
+			int dataStart = commandEnd + Separator.Length;
+			int dataEnd = end - Separator.Length;
 			byte[] dataBytes = new byte[dataEnd - dataStart];
 			Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);
 
