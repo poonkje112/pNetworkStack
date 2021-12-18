@@ -9,6 +9,8 @@ namespace pNetworkStack.Core
 {
 	public class Packet
 	{
+		private int m_CreationTime;
+
 		public static readonly byte[] BeginHeader = Encoding.ASCII.GetBytes("<Packet>");
 		public static readonly byte[] EndHeader = Encoding.ASCII.GetBytes("</Packet>");
 		private static readonly byte[] Separator = Encoding.ASCII.GetBytes("|");
@@ -21,6 +23,7 @@ namespace pNetworkStack.Core
 
 		public string Command => m_Command;
 		public byte[] PacketBytes => SerializePacket();
+		public int CreationTime => m_CreationTime;
 
 		private void MergePacket(Array sourceArray, bool includeSeparator = true)
 		{
@@ -74,78 +77,100 @@ namespace pNetworkStack.Core
 		{
 			byte[] command = Encoding.ASCII.GetBytes(m_Command);
 			byte[] data = m_Data;
+			byte[] creationTime = BitConverter.GetBytes(m_CreationTime);
 
 			command = Util.Compress(command);
 			data = Util.Compress(data);
 
 			m_SerializedPacket = new byte[BeginHeader.Length + EndHeader.Length + command.Length + data.Length +
-			                              (Separator.Length * 3)];
+			                              creationTime.Length + (Separator.Length * 4)];
 			m_SerializedPacketDestinationIndex = 0;
 
 			MergePacket(BeginHeader);
 			MergePacket(command);
 			MergePacket(data);
+			MergePacket(creationTime);
 			MergePacket(EndHeader, false);
 
 			return m_SerializedPacket;
 		}
 
-		internal static Packet DeserializePacket(byte[] data)
+		/// <summary>
+		/// This finds the exact match of bytes in the source and returns it starting index
+		/// </summary>
+		/// <param name="source">The source you want to find the part in</param>
+		/// <param name="part">The part you want to find</param>
+		/// <param name="startIndex">The start</param>
+		/// <returns>The start index of the part position in the source</returns>
+		private static int FindPart(byte[] source, byte[] part, int startIndex)
 		{
-			// Find the start of the packet
-			int start = 0;
-			for (int i = 0; i < data.Length; i++)
+			int index = -1;
+			bool found = false;
+			
+			for (int i = startIndex; i < source.Length; i++)
 			{
-				if (data[i] == BeginHeader[0])
-				{
-					start = i;
+				if(i + part.Length > source.Length)
 					break;
+				
+				for(int j = 0; j < part.Length; j++)
+				{
+					if (source[i + j] == part[j])
+					{
+						index = found ? index : i + j;
+						found = true;
+					}
+					else
+					{
+						index = -1;
+						found = false;
+					}
 				}
+
+				if (found)
+					break;
 			}
 
+			return index;
+		}
+
+		internal static Packet DeserializePacket(byte[] data)
+		{
 			// Find the end of the packet
-			int end = 0;
-			for (int i = data.Length - 1; i > 0; i--)
-			{
-				if (data[i] == EndHeader[0])
-				{
-					end = i;
-					break;
-				}
-			}
+			int endHeaderBeginning = data.Length - EndHeader.Length;
 
 			// Get the command
 			string command = String.Empty;
 			int commandStart = BeginHeader.Length + Separator.Length;
-			int commandEnd = end - Separator.Length;
-
-			// Loop through the array until the separator is found or the end of the packet is reached
-			for (int i = start + BeginHeader.Length + Separator.Length; i < end; i++)
-			{
-				if (data[i] == Separator[0])
-				{
-					commandEnd = i;
-					break;
-				}
-			}
+			int commandEnd = FindPart(data, Separator, commandStart);
 
 			byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
-			Array.Copy(data, start + BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
+			Array.Copy(data, BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
 
 			command = Encoding.ASCII.GetString(Util.Decompress(commandBytes));
-
+			
 			// Get the data
 			int dataStart = commandEnd + Separator.Length;
-			int dataEnd = end - Separator.Length;
+			int dataEnd = FindPart(data, Separator, dataStart);
+
 			byte[] dataBytes = new byte[dataEnd - dataStart];
 			Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);
 			dataBytes = Util.Decompress(dataBytes);
+			
+			// Get the creation time
+			int creationTimeStart = dataEnd + Separator.Length;
+			int creationTimeEnd = endHeaderBeginning - Separator.Length;
+			
+			byte[] creationTimeBytes = new byte[creationTimeEnd - creationTimeStart];
+			Array.Copy(data, creationTimeStart, creationTimeBytes, 0, creationTimeEnd - creationTimeStart);
+			
+			int creationTime = BitConverter.ToInt32(creationTimeBytes, 0);
 
 			// Create the packet
 			Packet packet = new Packet
 			{
 				m_Command = command,
-				m_Data = dataBytes
+				m_Data = dataBytes,
+				m_CreationTime = creationTime
 			};
 
 			// Return the packet
@@ -154,15 +179,23 @@ namespace pNetworkStack.Core
 
 		public Packet()
 		{
+			// Set the creation time using unix time
+			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 		}
 
 		public Packet(string command)
 		{
-			m_Command = command;
+			// Set the creation time using unix time
+			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
+			SetCommand(command);
 		}
 
 		public Packet(string command, object data)
 		{
+			// Set the creation time using unix time
+			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+
 			SetCommand(command);
 			SetData(data);
 		}
@@ -172,6 +205,13 @@ namespace pNetworkStack.Core
 			Packet temp = DeserializePacket(rawPacket);
 			m_Command = temp.m_Command;
 			m_Data = temp.m_Data;
+			m_CreationTime = temp.m_CreationTime;
+		}
+
+		~Packet()
+		{
+			m_Data = null;
+			m_SerializedPacket = null;
 		}
 	}
 }
