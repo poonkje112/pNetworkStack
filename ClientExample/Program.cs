@@ -29,7 +29,7 @@ namespace ClientExample
 				
 				Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - 1);
 				Console.WriteLine();
-				client.Send(message);
+				client.Send(new Packet(message));
 				
 				if (message.ToLower() == "exit")
 				{

@@ -34,7 +34,7 @@ namespace pNetworkStack.client.Commands
 			string uid = args[0];
 			Client.GetCurrent().OurUser.UUID = uid;
 
-			Client.GetCurrent().Send($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}");
+			Client.GetCurrent().Send(new Packet($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}"));
 		}
 
 		[ClientCommand("pl_add")]
@@ -84,7 +84,7 @@ namespace pNetworkStack.client.Commands
 			// Check if the user exists in our local list if not then we are out of sync
 			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
 			{
-				Client.GetCurrent().Send("sync_list");
+				Client.GetCurrent().Send(new Packet("sync_list"));
 				return;
 			}
 
@@ -100,7 +100,7 @@ namespace pNetworkStack.client.Commands
 			// Check if the user exists in our local list if not then we are out of sync
 			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
 			{
-				Client.GetCurrent().Send("sync_list");
+				Client.GetCurrent().Send(new Packet("sync_list"));
 				return;
 			}
 
@@ -116,7 +116,7 @@ namespace pNetworkStack.client.Commands
 			// Check if the user exists in our local list if not then we are out of sync
 			if (!Client.GetCurrent().ConnectedUsers.ContainsKey(uid))
 			{
-				Client.GetCurrent().Send("sync_list");
+				Client.GetCurrent().Send(new Packet("sync_list"));
 				return;
 			}
 

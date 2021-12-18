@@ -20,14 +20,14 @@ namespace pNetworkStackTest
 		public void TestPacket(SampleClass a)
 		{
 			Packet packet = new Packet();
-			packet.SetCommand("Hello, World!");
+			packet.SetCommand(new Command("Hello, World!"));
 			packet.SetData(a);
 			byte[] data = packet.PacketBytes;
 
 			Packet result = new Packet(data);
 			SampleClass resultData = result.GetData<SampleClass>();
 
-			Assert.IsFalse(a.Equals(resultData));
+			Assert.IsFalse(a.Equals(resultData) && result.Command.CommandName == "Hello, World!");
 		}
 	}
 }

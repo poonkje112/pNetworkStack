@@ -18,10 +18,10 @@ namespace pNetworkStack.Core
 		private byte[] m_SerializedPacket = new byte[0];
 		private int m_SerializedPacketDestinationIndex;
 
-		private string m_Command = String.Empty;
+		private Command m_Command;
 		private byte[] m_Data = new byte[0];
 
-		public string Command => m_Command;
+		public Command Command => m_Command;
 		public byte[] PacketBytes => SerializePacket();
 		public int CreationTime => m_CreationTime;
 
@@ -39,43 +39,22 @@ namespace pNetworkStack.Core
 
 		public void SetData(object data)
 		{
-			if (data == null)
-				return;
-
-			// Convert the object to bytes
-			BinaryFormatter bf = new BinaryFormatter();
-			using (MemoryStream ms = new MemoryStream())
-			{
-				bf.Serialize(ms, data);
-				m_Data = ms.ToArray();
-			}
+			m_Data = Util.GetBytes(data);
 		}
 
 		public T GetData<T>()
 		{
-			// Return the object from the bytes
-			BinaryFormatter bf = new BinaryFormatter();
-			using (MemoryStream ms = new MemoryStream(m_Data))
-			{
-				return (T)bf.Deserialize(ms);
-			}
+			return Util.ConvertBytesToObject<T>(m_Data);
 		}
 
-		public void SetCommand(string command)
+		public void SetCommand(Command command)
 		{
-			// Escape the command to prevent injection
-			m_Command = command.Replace("|", "\\|");
-
-			// Remove the headers if they exist in the command
-			m_Command = m_Command.Replace(Encoding.ASCII.GetString(BeginHeader), String.Empty);
-			m_Command = m_Command.Replace(Encoding.ASCII.GetString(EndHeader), String.Empty);
-
 			m_Command = command;
 		}
 
 		internal byte[] SerializePacket()
 		{
-			byte[] command = Encoding.ASCII.GetBytes(m_Command);
+			byte[] command = Util.GetBytes(m_Command);
 			byte[] data = m_Data;
 			byte[] creationTime = BitConverter.GetBytes(m_CreationTime);
 
@@ -139,14 +118,14 @@ namespace pNetworkStack.Core
 			int endHeaderBeginning = data.Length - EndHeader.Length;
 
 			// Get the command
-			string command = String.Empty;
+			Command command = null;
 			int commandStart = BeginHeader.Length + Separator.Length;
 			int commandEnd = FindPart(data, Separator, commandStart);
 
 			byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
 			Array.Copy(data, BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
 
-			command = Encoding.ASCII.GetString(Util.Decompress(commandBytes));
+			command = Util.ConvertBytesToObject<Command>(commandBytes);
 			
 			// Get the data
 			int dataStart = commandEnd + Separator.Length;
@@ -177,25 +156,27 @@ namespace pNetworkStack.Core
 			return packet;
 		}
 
+		private void SetCreationTime()
+		{
+			// Set the creation time using unix time
+			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+		}
+		
 		public Packet()
 		{
 			// Set the creation time using unix time
 			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
 		}
 
-		public Packet(string command)
+		public Packet(Command command)
 		{
-			// Set the creation time using unix time
-			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
+			SetCreationTime();
 			SetCommand(command);
 		}
 
-		public Packet(string command, object data)
+		public Packet(Command command, object data)
 		{
-			// Set the creation time using unix time
-			m_CreationTime = (int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-
+			SetCreationTime();
 			SetCommand(command);
 			SetData(data);
 		}
@@ -208,6 +189,15 @@ namespace pNetworkStack.Core
 			m_CreationTime = temp.m_CreationTime;
 		}
 
+		public Packet(string commandAndArgs)
+		{
+			SetCreationTime();
+			Util.ParseCommand(commandAndArgs, (command, args) =>
+			{
+				m_Command = new Command(command, args);
+			});
+		}
+		
 		~Packet()
 		{
 			m_Data = null;

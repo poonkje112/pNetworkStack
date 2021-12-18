@@ -44,7 +44,7 @@ namespace ServerExample
 
 				if (string.IsNullOrEmpty(message)) continue;
 
-				Server.GetCurrent().SendRPC(null, message);
+				Server.GetCurrent().SendRPC(null, new Packet(message));
 			}
 
 			Console.ReadLine();
@@ -61,8 +61,7 @@ namespace ServerExample
 			Packet packet = new Packet();
 			if (m_PlayerCount + 1 > 2)
 			{
-				// Server.GetCurrent().Send(connectedClient, "pl_disconnect full");
-				packet.SetCommand("pl_disconnect full");
+				packet.SetCommand(new Command("pl_disconnect").AddArgument("full"));
 			}
 			else
 			{
@@ -72,14 +71,12 @@ namespace ServerExample
 				if (m_PlayerCount == 1)
 				{
 					m_Red.Player = connectedClient;
-					// Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Red.Respawn()}");
-					packet.SetCommand($"pl_respawn {m_Red.Respawn()}");
+					packet.SetCommand(new Command($"pl_respawn").AddArgument($"{m_Red.Respawn()}"));
 				}
 				else
 				{
 					m_Blu.Player = connectedClient;
-					// Server.GetCurrent().Send(connectedClient, $"pl_respawn {m_Blu.Respawn()}");
-					packet.SetCommand($"pl_respawn {m_Blu.Respawn()}");
+					packet.SetCommand(new Command($"pl_respawn").AddArgument($"{m_Blu.Respawn()}"));
 				}
 			}
 			

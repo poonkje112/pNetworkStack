@@ -10,7 +10,7 @@ namespace ServerExample
 		[ServerCommand("pl_shoot")]
 		public void Shoot(User sender, string[] args)
 		{
-			Server.GetCurrent().SendRPC(sender, $"shoot {sender.UUID}");
+			Server.GetCurrent().SendRPC(sender, new Packet($"shoot {sender.UUID}"));
 		}
 
 		[ServerCommand("pl_hit")]

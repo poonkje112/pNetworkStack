@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using pNetworkStack.Core.Data;
 
 namespace pNetworkStack.Core
@@ -100,6 +103,46 @@ namespace pNetworkStack.Core
 		internal static byte[] Decompress(byte[] data)
 		{
 			return data;
+		}
+		
+		internal static string SafeString(string data)
+		{
+			// Escape the command to prevent injection
+			data = data.Replace("|", "\\|");
+
+			// Remove the headers if they exist in the command
+			data = data.Replace(Encoding.ASCII.GetString(Packet.BeginHeader), String.Empty);
+			data = data.Replace(Encoding.ASCII.GetString(Packet.EndHeader), String.Empty);
+
+			return data;
+		}
+
+		internal static byte[] GetBytes(object target)
+		{
+			if (target == null)
+				return null;
+
+			byte[] result = null;
+			
+			// Convert the object to bytes
+			BinaryFormatter bf = new BinaryFormatter();
+			using (MemoryStream ms = new MemoryStream())
+			{
+				bf.Serialize(ms, target);
+				result = ms.ToArray();
+			}
+
+			return result;
+		}
+		
+		internal static T ConvertBytesToObject<T>(byte[] data) 
+		{
+			// Return the object from the bytes
+			BinaryFormatter bf = new BinaryFormatter();
+			using (MemoryStream ms = new MemoryStream(data))
+			{
+				return (T)bf.Deserialize(ms);
+			}
 		}
 	}
 }

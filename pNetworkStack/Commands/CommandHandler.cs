@@ -43,17 +43,16 @@ namespace pNetworkStack.Commands
 		/// Execute a server registered command using the [ServerCommand(commandName)] Attribute
 		/// </summary>
 		/// <param name="command">The command that you want to use</param>
-		/// <param name="args">The parameters that come with it</param>
 		/// <returns>If the command was found and executed</returns>
-		public bool ExecuteServerCommand(string command, object[] args = null)
+		public bool ExecuteServerCommand(Command command)
 		{
 			try
 			{
-				if (!m_ServerCommands.ContainsKey(command) || m_ServerCommands[command].DeclaringType == null)
+				if (!m_ServerCommands.ContainsKey(command.CommandName) || m_ServerCommands[command.CommandName].DeclaringType == null)
 					return false;
 
-				m_ServerCommands[command]
-					.Invoke(Activator.CreateInstance(m_ServerCommands[command].DeclaringType), args);
+				m_ServerCommands[command.CommandName]
+					.Invoke(Activator.CreateInstance(m_ServerCommands[command.CommandName].DeclaringType), command.GetArguments());
 				return true;
 			}
 			catch (Exception ex)
@@ -66,22 +65,21 @@ namespace pNetworkStack.Commands
 		/// Execute a client registered command using the [ClientCommand(commandName)] Attribute
 		/// </summary>
 		/// <param name="command">The command that you want to use</param>
-		/// <param name="args">The parameters that come with it</param>
 		/// <returns>If the command was found and executed</returns>
-		public bool ExecuteClientCommand(string command, object[] args = null)
+		public bool ExecuteClientCommand(Command command)
 		{
 			try
 			{
-				if (!m_ClientCommands.ContainsKey(command) || m_ClientCommands[command].DeclaringType == null)
+				if (!m_ClientCommands.ContainsKey(command.CommandName) || m_ClientCommands[command.CommandName].DeclaringType == null)
 					return false;
 
-				m_ClientCommands[command]
-					.Invoke(Activator.CreateInstance(m_ClientCommands[command].DeclaringType), args);
+				m_ClientCommands[command.CommandName]
+					.Invoke(Activator.CreateInstance(m_ClientCommands[command.CommandName].DeclaringType), command.GetArguments());
 				return true;
 			}
 			catch (Exception e)
 			{
-				Debugger.Log($"Was processing:\n{command}\n{args}");
+				Debugger.Log($"Was processing:\n{command}\n{command.GetArguments()}");
 				Debugger.Log(e.Message, LogType.Error);
 				return false;
 			}
