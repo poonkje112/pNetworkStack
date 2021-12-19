@@ -13,7 +13,6 @@ namespace pNetworkStack.Core.Data
 		private pVector m_Position, m_Euler;
 		public string LocalEndpoint;
 		
-		
 		public User()
 		{
 			m_Position = pVector.Zero();

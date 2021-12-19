@@ -15,7 +15,7 @@ namespace pNetworkStack.client
 		public Socket Socket;
 		public Action OnSendDone;
 	}
-	
+
 	public class Client
 	{
 		private static Client m_Instance;
@@ -23,11 +23,16 @@ namespace pNetworkStack.client
 		public static string Username;
 
 		private Socket m_Client;
+		private UdpClient m_UdpClient;
+
+		private IPEndPoint m_ServerEndPoint;
 
 		public static Action OnClientConnected, OnClientDisconnected;
 		public static Action<User, string> OnMessageReceived;
 		public static Action<string> OnUserLeft;
 		public static Action<User> OnUserJoined;
+
+		public ConnectionType ConnectionType { get; private set; }
 
 		internal Dictionary<string, User> ConnectedUsers = new Dictionary<string, User>();
 
@@ -43,19 +48,21 @@ namespace pNetworkStack.client
 		/// <param name="ip">target ip for connection</param>
 		/// <param name="port">target port for connection</param>
 		/// <returns>A new running instance</returns>
-		public static Client CreateClient(string ip, int port)
+		public static Client CreateClient(string ip, int port, ConnectionType connectionType = ConnectionType.TCP)
 		{
-			if (m_Instance == null) return new Client(ip, port);
+			if (m_Instance == null) return new Client(ip, port, connectionType);
 			return m_Instance;
 		}
 
-		private Client(string ip, int port)
+		private Client(string ip, int port, ConnectionType connectionType)
 		{
 			if (m_Instance == null)
 			{
 				// Parse the ip
 				IPAddress target = IPAddress.Parse(ip);
-				IPEndPoint remoteEndPoint = new IPEndPoint(target, port);
+				m_ServerEndPoint = new IPEndPoint(target, port);
+
+				ConnectionType = connectionType;
 
 				if (OurUser == null) OurUser = new User();
 
@@ -63,13 +70,33 @@ namespace pNetworkStack.client
 
 				try
 				{
-					// Create the socket
-					m_Client = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-					m_Instance = this;
+					if (connectionType == ConnectionType.TCP)
+					{
+						// Create the socket
+						m_Client = new Socket(target.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-					// Connect to the server
-					m_Client.Connect(remoteEndPoint);
-					OnClientConnected?.Invoke();
+						// Connect to the server
+						m_Client.Connect(m_ServerEndPoint);
+						
+						// Start the receive loop
+						Receive(m_Client);
+					}
+					else
+					{
+						m_UdpClient = new UdpClient();
+						m_UdpClient.Connect(m_ServerEndPoint);
+						
+						// Start the receive loop
+						Receive(m_UdpClient);
+						
+						// Convert string to byte array
+						byte[] data = new Packet("hello").SerializePacket();
+						
+						// Send the first packet to tell the server we are joining
+						m_UdpClient.Send(data, data.Length);
+					}
+
+					m_Instance = this;
 				}
 				catch (SocketException e)
 				{
@@ -77,9 +104,6 @@ namespace pNetworkStack.client
 					Debugger.Log(e.Message, LogType.Error);
 					return;
 				}
-
-				// Start the receive loop
-				Receive(m_Client);
 			}
 		}
 
@@ -107,10 +131,28 @@ namespace pNetworkStack.client
 			}
 		}
 
+		private void Receive(UdpClient client)
+		{
+			try
+			{
+				ClientData data = new ClientData()
+				{
+					RemoteEndPoint = m_ServerEndPoint
+				};
+				
+				// Start the receiving loop
+				client.BeginReceive(ReceiveCallbackUDP, data);
+			}
+			catch (Exception e)
+			{
+				Debugger.Log(e.Message, LogType.Error);
+			}
+		}
+		
 		private void ReceiveCallback(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
-			ClientData data = (ClientData) ar.AsyncState;
+			ClientData data = (ClientData)ar.AsyncState;
 
 			try
 			{
@@ -125,9 +167,9 @@ namespace pNetworkStack.client
 					if (data.PushData(data.Buffer, bytesToRead))
 					{
 						Packet p = data.PopPacket();
-						
+
 						CommandHandler.GetHandler().ExecuteClientCommand(p.Command);
-						
+
 						data.ClearData();
 						data.Buffer = new byte[ClientData.BufferSize];
 					}
@@ -144,25 +186,74 @@ namespace pNetworkStack.client
 			}
 		}
 
+		private void ReceiveCallbackUDP(IAsyncResult ar)
+		{
+			ClientData data = (ClientData)ar.AsyncState;
+
+			try
+			{
+				UdpClient server = m_UdpClient;
+				IPEndPoint remoteEndPoint = data.RemoteEndPoint;
+
+				// Get the amount of data
+				byte[] bytes = server.EndReceive(ar, ref remoteEndPoint);
+
+				// Check if there is any data to process
+				if (bytes.Length > 0)
+				{
+					if (data.PushData(bytes, bytes.Length))
+					{
+						Packet p = data.PopPacket();
+
+						CommandHandler.GetHandler().ExecuteClientCommand(p.Command);
+
+						data.ClearData();
+						data.Buffer = new byte[ClientData.BufferSize];
+					}
+				}
+
+				// Start receiving again
+				server.BeginReceive(ReceiveCallbackUDP, data);
+			}
+			catch (SocketException e)
+			{
+				// Assume the serer has stopped
+				Debugger.Log("Lost connection!", LogType.Warning);
+				StopConnection();
+			}
+		}
+		
 		public void Send(Packet packet, Action onSendDone = null)
 		{
 			byte[] data = packet.SerializePacket();
-			
+
 			SendObject sendObject = new SendObject()
 			{
-				Socket = m_Client,
 				OnSendDone = onSendDone
 			};
-			
-			m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, sendObject);
+
+			if (ConnectionType == ConnectionType.TCP)
+			{
+				sendObject.Socket = m_Client;
+				m_Client.BeginSend(data, 0, data.Length, 0, OnSendDone, sendObject);
+			}
+			else
+			{
+				m_UdpClient.Send(data, data.Length);
+				onSendDone?.Invoke();
+			}
 		}
 
 		void OnSendDone(IAsyncResult ar)
 		{
-			SendObject sobj = (SendObject) ar.AsyncState;
+			SendObject sobj = (SendObject)ar.AsyncState;
 			Socket s = sobj.Socket;
-			
-			s.EndSend(ar);
+
+			if (ConnectionType == ConnectionType.TCP)
+				s.EndSend(ar);
+			else
+				m_UdpClient.EndSend(ar);
+
 			sobj.OnSendDone?.Invoke();
 		}
 
@@ -201,7 +292,8 @@ namespace pNetworkStack.client
 		/// </summary>
 		public bool IsConnected
 		{
-			get => m_Client.Connected;
+			// TODO change this to use the handshake/heartbeat
+			get => ConnectionType != ConnectionType.TCP || m_Client.Connected;
 		}
 	}
 }

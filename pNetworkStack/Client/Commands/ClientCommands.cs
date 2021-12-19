@@ -34,7 +34,12 @@ namespace pNetworkStack.client.Commands
 			string uid = args[0];
 			Client.GetCurrent().OurUser.UUID = uid;
 
-			Client.GetCurrent().Send(new Packet($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}"));
+			Packet p = new Packet($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}");
+			byte[] data = p.SerializePacket();
+			Debugger.Log(data.Length.ToString());
+			
+			
+			Client.GetCurrent().Send(p);
 		}
 
 		[ClientCommand("pl_add")]

@@ -74,44 +74,6 @@ namespace pNetworkStack.Core
 			return m_SerializedPacket;
 		}
 
-		/// <summary>
-		/// This finds the exact match of bytes in the source and returns it starting index
-		/// </summary>
-		/// <param name="source">The source you want to find the part in</param>
-		/// <param name="part">The part you want to find</param>
-		/// <param name="startIndex">The start</param>
-		/// <returns>The start index of the part position in the source</returns>
-		private static int FindPart(byte[] source, byte[] part, int startIndex)
-		{
-			int index = -1;
-			bool found = false;
-			
-			for (int i = startIndex; i < source.Length; i++)
-			{
-				if(i + part.Length > source.Length)
-					break;
-				
-				for(int j = 0; j < part.Length; j++)
-				{
-					if (source[i + j] == part[j])
-					{
-						index = found ? index : i + j;
-						found = true;
-					}
-					else
-					{
-						index = -1;
-						found = false;
-					}
-				}
-
-				if (found)
-					break;
-			}
-
-			return index;
-		}
-
 		internal static Packet DeserializePacket(byte[] data)
 		{
 			// Find the end of the packet
@@ -120,7 +82,7 @@ namespace pNetworkStack.Core
 			// Get the command
 			Command command = null;
 			int commandStart = BeginHeader.Length + Separator.Length;
-			int commandEnd = FindPart(data, Separator, commandStart);
+			int commandEnd = Util.FindPart(data, Separator, commandStart);
 
 			byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
 			Array.Copy(data, BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
@@ -129,7 +91,7 @@ namespace pNetworkStack.Core
 			
 			// Get the data
 			int dataStart = commandEnd + Separator.Length;
-			int dataEnd = FindPart(data, Separator, dataStart);
+			int dataEnd = Util.FindPart(data, Separator, dataStart);
 
 			byte[] dataBytes = new byte[dataEnd - dataStart];
 			Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);

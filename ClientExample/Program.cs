@@ -19,7 +19,7 @@ namespace ClientExample
 
 			Client.Username = username;
 			
-			Client client = Client.CreateClient( "127.0.0.1", 4007);
+			Client client = Client.CreateClient( "127.0.0.1", 4007, ConnectionType.UDP);
 
 			while (client.IsConnected)
 			{

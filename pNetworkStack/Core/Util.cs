@@ -144,5 +144,43 @@ namespace pNetworkStack.Core
 				return (T)bf.Deserialize(ms);
 			}
 		}
+		
+		/// <summary>
+		/// This finds the exact match of bytes in the source and returns it starting index
+		/// </summary>
+		/// <param name="source">The source you want to find the part in</param>
+		/// <param name="part">The part you want to find</param>
+		/// <param name="startIndex">The start</param>
+		/// <returns>The start index of the part position in the source</returns>
+		internal static int FindPart(byte[] source, byte[] part, int startIndex)
+		{
+			int index = -1;
+			bool found = false;
+			
+			for (int i = startIndex; i < source.Length; i++)
+			{
+				if(i + part.Length > source.Length)
+					break;
+				
+				for(int j = 0; j < part.Length; j++)
+				{
+					if (source[i + j] == part[j])
+					{
+						index = found ? index : i + j;
+						found = true;
+					}
+					else
+					{
+						index = -1;
+						found = false;
+					}
+				}
+
+				if (found)
+					break;
+			}
+
+			return index;
+		}
 	}
 }

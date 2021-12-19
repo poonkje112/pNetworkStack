@@ -33,7 +33,7 @@ namespace ServerExample
 				maxZ = -20
 			};
 
-			Server server = Server.CreateServer(4007);
+			Server server = Server.CreateServer(4007, ConnectionType.UDP);
 
 			server.OnUserJoined += OnUserJoined;
 			server.OnUserLeft += OnUserLeft;
