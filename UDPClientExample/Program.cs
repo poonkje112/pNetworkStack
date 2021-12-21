@@ -9,7 +9,7 @@ namespace UDPClientExample
 		static void Main(string[] args)
 		{
 			InitializeDebugger();
-			P2PUdpClient client = P2PUdpClient.CreateClient();
+			Client client = Client.CreateClient("127.0.0.1", 2117);
 			
 			while (client.IsReady)
 			{
@@ -19,7 +19,7 @@ namespace UDPClientExample
 				
 				Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop - 1);
 				Console.WriteLine();
-				client.Send(message);
+				client.Send(new Packet(message));
 				
 				if (message.ToLower() == "exit")
 				{

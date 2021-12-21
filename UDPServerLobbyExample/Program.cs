@@ -12,7 +12,7 @@ namespace UDPServerLobbyExample
 		{
 			InitializeDebugger();
 
-			UDPServer server = UDPServer.CreateServer(2117);
+			Server server = Server.CreateServer(2117, ConnectionType.UDP);
 			server.OnUserJoined += OnUserJoined;
 			server.OnUserLeft += OnUserLeft;
 		}
