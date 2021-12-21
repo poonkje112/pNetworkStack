@@ -10,14 +10,10 @@ using pNetworkStack.Core.Data;
 
 namespace pNetworkStack.client
 {
-	internal struct SendObject
-	{
-		public Socket Socket;
-		public Action OnSendDone;
-	}
-
 	public class Client
 	{
+	#region Variables
+
 		private static Client m_Instance;
 
 		public static string Username;
@@ -41,6 +37,10 @@ namespace pNetworkStack.client
 		internal bool m_IsReady;
 
 		public bool IsReady => m_IsReady;
+
+	#endregion
+
+	#region Client Setup
 
 		/// <summary>
 		/// This will create and return a new client connection instance
@@ -112,6 +112,10 @@ namespace pNetworkStack.client
 			return m_Instance;
 		}
 
+	#endregion
+
+	#region Receive Data
+
 		private void Receive(Socket client)
 		{
 			try
@@ -123,7 +127,7 @@ namespace pNetworkStack.client
 				};
 
 				// Start the receiving loop
-				client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
+				client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallbackTCP, data);
 			}
 			catch (Exception e)
 			{
@@ -149,7 +153,7 @@ namespace pNetworkStack.client
 			}
 		}
 
-		private void ReceiveCallback(IAsyncResult ar)
+		private void ReceiveCallbackTCP(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
 			ClientData client = (ClientData)ar.AsyncState;
@@ -165,7 +169,7 @@ namespace pNetworkStack.client
 					(cmd) => { CommandHandler.GetHandler().ExecuteClientCommand(cmd); });
 
 				// Start receiving again
-				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, client);
+				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallbackTCP, client);
 			}
 			catch (SocketException e)
 			{
@@ -189,7 +193,7 @@ namespace pNetworkStack.client
 
 				Util.ProcessData(ref client, client.Buffer.Length,
 					(cmd) => { CommandHandler.GetHandler().ExecuteClientCommand(cmd); });
-				
+
 				// Start receiving again
 				server.BeginReceive(ReceiveCallbackUDP, client);
 			}
@@ -201,6 +205,10 @@ namespace pNetworkStack.client
 				StopConnection();
 			}
 		}
+
+	#endregion
+
+	#region Send Data
 
 		public void Send(Packet packet, Action onSendDone = null)
 		{
@@ -236,6 +244,8 @@ namespace pNetworkStack.client
 			sobj.OnSendDone?.Invoke();
 		}
 
+	#endregion
+
 		/// <summary>
 		/// Stops the current client connection and destroys the running instance
 		/// </summary>
@@ -245,7 +255,10 @@ namespace pNetworkStack.client
 			{
 				try
 				{
-					m_Client.Disconnect(false);
+					if (ConnectionType == ConnectionType.TCP)
+						m_Client.Disconnect(false);
+					else
+						m_UdpClient.Close();
 				}
 				catch (Exception e)
 				{
@@ -253,6 +266,7 @@ namespace pNetworkStack.client
 				}
 
 				m_Client = null;
+				m_UdpClient = null;
 				m_Instance = null;
 				m_IsReady = false;
 

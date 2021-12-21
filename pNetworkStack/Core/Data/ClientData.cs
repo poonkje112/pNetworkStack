@@ -14,9 +14,9 @@ namespace pNetworkStack.Core.Data
 		public Socket WorkClient = null;
 		public IPEndPoint RemoteEndPoint = null;
 
-		public byte[] Data = null;
-
 		public User UserData;
+
+		private byte[] PacketData = null;
 
 		public void SendData(Packet packet, User ignoreSender = null)
 		{
@@ -51,12 +51,12 @@ namespace pNetworkStack.Core.Data
 		/// <returns>If the packet is complete</returns>
 		public bool PushData(byte[] data, int bytesToRead)
 		{
-			if (Data == null)
+			if (PacketData == null)
 			{
-				Data = new byte[BufferSize];
+				PacketData = new byte[BufferSize];
 			}
 
-			Array.Copy(data, Data, bytesToRead);
+			Array.Copy(data, PacketData, bytesToRead);
 
 			return IsPacketComplete();
 		}
@@ -65,28 +65,28 @@ namespace pNetworkStack.Core.Data
 		{
 			byte[] endHeader = Packet.EndHeader;
 			int endHeaderLength = endHeader.Length;
-			int endHeaderIndex = Util.FindPart(Data, endHeader, 0);
+			int endHeaderIndex = Util.FindPart(PacketData, endHeader, 0);
 
 			if (endHeaderIndex < 0 || endHeaderIndex == -1) return false;
 			
 			// Trim the data to the end of the packet
 			byte[] packetData = new byte[endHeaderIndex + endHeaderLength];
-			Array.Copy(Data, packetData, packetData.Length);
+			Array.Copy(PacketData, packetData, packetData.Length);
 
-			Data = packetData;
+			PacketData = packetData;
 
 			return true;
 		}
 
 		public void ClearData()
 		{
-			Data = null;
+			PacketData = null;
 			Buffer = new byte[BufferSize];
 		}
 
 		public Packet PopPacket()
 		{
-			return !IsPacketComplete() ? null : Packet.DeserializePacket(Data);
+			return !IsPacketComplete() ? null : Packet.DeserializePacket(PacketData);
 		}
 	}
 }

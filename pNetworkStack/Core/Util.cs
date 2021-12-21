@@ -197,14 +197,20 @@ namespace pNetworkStack.Core
 				if (client.PushData(client.Buffer, bytesToRead))
 				{
 					Packet p = client.PopPacket();
-					
+
+					if (p == null)
+					{
+						// Assume the packet was corrupted so we just drop it and clear the buffer
+						client.ClearData();
+						return;
+					}
+
 					if(addSender)
 						p.Command.AddSender(client.UserData);
 
 					callback.Invoke(p.Command);
 
 					client.ClearData();
-					client.Buffer = new byte[ClientData.BufferSize];
 				}
 			}
 		}

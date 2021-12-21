@@ -16,13 +16,11 @@ namespace pNetworkStack.Server
 {
 	public class Server
 	{
+	#region Variables
+
 		private static Server Instance;
 
-		// All server/client commands gets handled here
 		private CommandHandler m_CommandHandler;
-
-		// Our state to check if the server is running or not
-		private bool m_IsRunning;
 
 		private TpsHandler m_TpsHandler;
 
@@ -38,7 +36,12 @@ namespace pNetworkStack.Server
 		public Action TransformUpdate, LateUpdate;
 
 		public ConnectionType ConnectionType { get; private set; }
+		public bool IsRunning { get; private set; }
 
+	#endregion
+
+	#region Server Setup
+		
 		/// <summary>
 		/// Creates and starts a server on the specified port
 		/// </summary>
@@ -83,7 +86,7 @@ namespace pNetworkStack.Server
 				m_TpsHandler.StartTicker();
 
 				// Set the running state to true
-				m_IsRunning = true;
+				IsRunning = true;
 
 				// Get an instance of the CommandHandler
 				m_CommandHandler = CommandHandler.GetHandler();
@@ -110,6 +113,10 @@ namespace pNetworkStack.Server
 			// Start accepting new clients
 			UdpClient.BeginReceive(ReadCallbackUDP, UdpClient);
 		}
+
+	#endregion
+		
+	#region Update Methods
 
 		private void TransfromUpdate()
 		{
@@ -141,6 +148,10 @@ namespace pNetworkStack.Server
 			}
 		}
 
+	#endregion
+
+	#region Client Processing
+
 		private void AcceptClientTCP(IAsyncResult ar)
 		{
 			// Gets the socket that handles the requests
@@ -154,7 +165,7 @@ namespace pNetworkStack.Server
 			ProcessClient(ref data);
 
 			// Start receiving data
-			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+			client.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallbackTCP, data);
 
 			Send(client, new Packet($"pl_init {data.UserData.UUID}"), true);
 
@@ -182,7 +193,24 @@ namespace pNetworkStack.Server
 			ClientInit.Add(randomUID, data);
 		}
 
-		private void ReadCallback(IAsyncResult ar)
+		private void AcceptClientUDP(IPEndPoint source)
+		{
+			ClientData client;
+			client = new ClientData
+			{
+				RemoteEndPoint = source
+			};
+
+			ProcessClient(ref client);
+
+			Send(source, new Packet($"pl_init {client.UserData.UUID}"), true);
+		}
+
+	#endregion
+
+	#region Read Data
+
+		private void ReadCallbackTCP(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
 			ClientData client = (ClientData)ar.AsyncState;
@@ -194,11 +222,10 @@ namespace pNetworkStack.Server
 				// Get the amount of data
 				int bytesToRead = handler.EndReceive(ar);
 
-				Util.ProcessData(ref client, bytesToRead, true,
-					(cmd) => { CommandHandler.GetHandler().ExecuteServerCommand(cmd); });
+				ProcessPacket(ref client, bytesToRead);
 
 				// Start receiving again
-				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, client);
+				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReadCallbackTCP, client);
 			}
 			catch (SocketException e)
 			{
@@ -217,30 +244,14 @@ namespace pNetworkStack.Server
 				byte[] data = listener.EndReceive(ar, ref source);
 				int bytesToRead = data.Length;
 
-				// Check if there is a client with this ipendpoint
-				ClientData client = Clients.Values.FirstOrDefault(x => Equals(x.RemoteEndPoint, source));
-				client = client ?? ClientInit.Values.FirstOrDefault(x => Equals(x.RemoteEndPoint, source));
-				client = client ?? AddClientQueue.FirstOrDefault(x => Equals(x.Item2.RemoteEndPoint, source))?.Item2;
-
 				// If the client has not yet been registered then we ignore their first packet and register the new client
-				if (client != null)
+				if (GetClientData(source, out ClientData client))
 				{
 					client.Buffer = data;
-
-					Util.ProcessData(ref client, bytesToRead, true,
-						(cmd) => { CommandHandler.GetHandler().ExecuteServerCommand(cmd); });
+					ProcessPacket(ref client, bytesToRead);
 				}
 				else
-				{
-					client = new ClientData
-					{
-						RemoteEndPoint = source
-					};
-
-					ProcessClient(ref client);
-
-					Send(source, new Packet($"pl_init {client.UserData.UUID}"), true);
-				}
+					AcceptClientUDP(source);
 
 				// Start receiving again
 				listener.BeginReceive(ReadCallbackUDP, listener);
@@ -250,6 +261,27 @@ namespace pNetworkStack.Server
 				Debugger.Log(e.Message, LogType.Error);
 			}
 		}
+
+		private void ProcessPacket(ref ClientData client, int bytesToRead)
+		{
+			Util.ProcessData(ref client, bytesToRead, true,
+				(cmd) => { CommandHandler.GetHandler().ExecuteServerCommand(cmd); });
+		}
+
+		private bool GetClientData(IPEndPoint endPoint, out ClientData result)
+		{
+			ClientData client = Clients.Values.FirstOrDefault(x => Equals(x.RemoteEndPoint, endPoint));
+			client = client ?? ClientInit.Values.FirstOrDefault(x => Equals(x.RemoteEndPoint, endPoint));
+			client = client ?? AddClientQueue.FirstOrDefault(x => Equals(x.Item2.RemoteEndPoint, endPoint))?.Item2;
+
+			result = client;
+
+			return client != null;
+		}
+
+	#endregion
+
+	#region Send Data
 
 		public void Send(User receiver, Packet packet, bool init = false)
 		{
@@ -290,6 +322,8 @@ namespace pNetworkStack.Server
 			OnSendRPC?.Invoke(packet, sender);
 		}
 
+	#endregion
+
 		public void DisconnectClient(string uid)
 		{
 			ClientData sender = Clients[uid];
@@ -301,11 +335,6 @@ namespace pNetworkStack.Server
 			Clients.Remove(uid);
 
 			OnUserLeft?.Invoke(sender.UserData);
-		}
-
-		public bool IsRunning
-		{
-			get => m_IsRunning;
 		}
 	}
 }

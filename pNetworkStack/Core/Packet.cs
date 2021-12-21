@@ -76,46 +76,53 @@ namespace pNetworkStack.Core
 
 		internal static Packet DeserializePacket(byte[] data)
 		{
-			// Find the end of the packet
-			int endHeaderBeginning = data.Length - EndHeader.Length;
-
-			// Get the command
-			Command command = null;
-			int commandStart = BeginHeader.Length + Separator.Length;
-			int commandEnd = Util.FindPart(data, Separator, commandStart);
-
-			byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
-			Array.Copy(data, BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
-
-			command = Util.ConvertBytesToObject<Command>(commandBytes);
-			
-			// Get the data
-			int dataStart = commandEnd + Separator.Length;
-			int dataEnd = Util.FindPart(data, Separator, dataStart);
-
-			byte[] dataBytes = new byte[dataEnd - dataStart];
-			Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);
-			dataBytes = Util.Decompress(dataBytes);
-			
-			// Get the creation time
-			int creationTimeStart = dataEnd + Separator.Length;
-			int creationTimeEnd = endHeaderBeginning - Separator.Length;
-			
-			byte[] creationTimeBytes = new byte[creationTimeEnd - creationTimeStart];
-			Array.Copy(data, creationTimeStart, creationTimeBytes, 0, creationTimeEnd - creationTimeStart);
-			
-			int creationTime = BitConverter.ToInt32(creationTimeBytes, 0);
-
-			// Create the packet
-			Packet packet = new Packet
+			try
 			{
-				m_Command = command,
-				m_Data = dataBytes,
-				m_CreationTime = creationTime
-			};
+				// Find the end of the packet
+				int endHeaderBeginning = data.Length - EndHeader.Length;
 
-			// Return the packet
-			return packet;
+				// Get the command
+				Command command = null;
+				int commandStart = BeginHeader.Length + Separator.Length;
+				int commandEnd = Util.FindPart(data, Separator, commandStart);
+
+				byte[] commandBytes = new byte[commandEnd - BeginHeader.Length - Separator.Length];
+				Array.Copy(data, BeginHeader.Length + Separator.Length, commandBytes, 0, commandEnd - commandStart);
+
+				command = Util.ConvertBytesToObject<Command>(commandBytes);
+
+				// Get the data
+				int dataStart = commandEnd + Separator.Length;
+				int dataEnd = Util.FindPart(data, Separator, dataStart);
+
+				byte[] dataBytes = new byte[dataEnd - dataStart];
+				Array.Copy(data, dataStart, dataBytes, 0, dataEnd - dataStart);
+				dataBytes = Util.Decompress(dataBytes);
+
+				// Get the creation time
+				int creationTimeStart = dataEnd + Separator.Length;
+				int creationTimeEnd = endHeaderBeginning - Separator.Length;
+
+				byte[] creationTimeBytes = new byte[creationTimeEnd - creationTimeStart];
+				Array.Copy(data, creationTimeStart, creationTimeBytes, 0, creationTimeEnd - creationTimeStart);
+
+				int creationTime = BitConverter.ToInt32(creationTimeBytes, 0);
+
+				// Create the packet
+				Packet packet = new Packet
+				{
+					m_Command = command,
+					m_Data = dataBytes,
+					m_CreationTime = creationTime
+				};
+
+				// Return the packet
+				return packet;
+			}
+			catch (Exception ex)
+			{
+				return null;
+			}
 		}
 
 		private void SetCreationTime()
