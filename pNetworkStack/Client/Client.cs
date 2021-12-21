@@ -77,7 +77,7 @@ namespace pNetworkStack.client
 
 						// Connect to the server
 						m_Client.Connect(m_ServerEndPoint);
-						
+
 						// Start the receive loop
 						Receive(m_Client);
 					}
@@ -85,13 +85,13 @@ namespace pNetworkStack.client
 					{
 						m_UdpClient = new UdpClient();
 						m_UdpClient.Connect(m_ServerEndPoint);
-						
+
 						// Start the receive loop
 						Receive(m_UdpClient);
-						
+
 						// Convert string to byte array
 						byte[] data = new Packet("hello").SerializePacket();
-						
+
 						// Send the first packet to tell the server we are joining
 						m_UdpClient.Send(data, data.Length);
 					}
@@ -139,7 +139,7 @@ namespace pNetworkStack.client
 				{
 					RemoteEndPoint = m_ServerEndPoint
 				};
-				
+
 				// Start the receiving loop
 				client.BeginReceive(ReceiveCallbackUDP, data);
 			}
@@ -148,35 +148,24 @@ namespace pNetworkStack.client
 				Debugger.Log(e.Message, LogType.Error);
 			}
 		}
-		
+
 		private void ReceiveCallback(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
-			ClientData data = (ClientData)ar.AsyncState;
+			ClientData client = (ClientData)ar.AsyncState;
 
 			try
 			{
-				Socket handler = data.WorkClient;
+				Socket handler = client.WorkClient;
 
 				// Get the amount of data
 				int bytesToRead = handler.EndReceive(ar);
 
-				// Check if there is any data to process
-				if (bytesToRead > 0)
-				{
-					if (data.PushData(data.Buffer, bytesToRead))
-					{
-						Packet p = data.PopPacket();
-
-						CommandHandler.GetHandler().ExecuteClientCommand(p.Command);
-
-						data.ClearData();
-						data.Buffer = new byte[ClientData.BufferSize];
-					}
-				}
+				Util.ProcessData(ref client, bytesToRead,
+					(cmd) => { CommandHandler.GetHandler().ExecuteClientCommand(cmd); });
 
 				// Start receiving again
-				handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, data);
+				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReceiveCallback, client);
 			}
 			catch (SocketException e)
 			{
@@ -188,41 +177,31 @@ namespace pNetworkStack.client
 
 		private void ReceiveCallbackUDP(IAsyncResult ar)
 		{
-			ClientData data = (ClientData)ar.AsyncState;
+			ClientData client = (ClientData)ar.AsyncState;
 
 			try
 			{
 				UdpClient server = m_UdpClient;
-				IPEndPoint remoteEndPoint = data.RemoteEndPoint;
+				IPEndPoint remoteEndPoint = client.RemoteEndPoint;
 
 				// Get the amount of data
-				byte[] bytes = server.EndReceive(ar, ref remoteEndPoint);
+				client.Buffer = server.EndReceive(ar, ref remoteEndPoint);
 
-				// Check if there is any data to process
-				if (bytes.Length > 0)
-				{
-					if (data.PushData(bytes, bytes.Length))
-					{
-						Packet p = data.PopPacket();
-
-						CommandHandler.GetHandler().ExecuteClientCommand(p.Command);
-
-						data.ClearData();
-						data.Buffer = new byte[ClientData.BufferSize];
-					}
-				}
-
+				Util.ProcessData(ref client, client.Buffer.Length,
+					(cmd) => { CommandHandler.GetHandler().ExecuteClientCommand(cmd); });
+				
 				// Start receiving again
-				server.BeginReceive(ReceiveCallbackUDP, data);
+				server.BeginReceive(ReceiveCallbackUDP, client);
 			}
 			catch (SocketException e)
 			{
+				// TODO This will never happen as there is no stream like in TCP
 				// Assume the serer has stopped
 				Debugger.Log("Lost connection!", LogType.Warning);
 				StopConnection();
 			}
 		}
-		
+
 		public void Send(Packet packet, Action onSendDone = null)
 		{
 			byte[] data = packet.SerializePacket();

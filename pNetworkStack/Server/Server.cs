@@ -39,7 +39,6 @@ namespace pNetworkStack.Server
 
 		public ConnectionType ConnectionType { get; private set; }
 
-
 		/// <summary>
 		/// Creates and starts a server on the specified port
 		/// </summary>
@@ -82,7 +81,6 @@ namespace pNetworkStack.Server
 
 				// Start the tps handler
 				m_TpsHandler.StartTicker();
-				Debugger.Log("Ticker started!");
 
 				// Set the running state to true
 				m_IsRunning = true;
@@ -90,7 +88,7 @@ namespace pNetworkStack.Server
 				// Get an instance of the CommandHandler
 				m_CommandHandler = CommandHandler.GetHandler();
 
-				Debugger.Log($"Server started on: {System.Net.IPAddress.Any}:{port}");
+				Debugger.Log($"Server started on: {IPAddress.Any}:{port}");
 			}
 		}
 
@@ -121,7 +119,7 @@ namespace pNetworkStack.Server
 		private void FinalUpdate()
 		{
 			LateUpdate?.Invoke();
-			
+
 			// Check if we have any new clients to add
 			while (AddClientQueue.Count > 0)
 			{
@@ -187,37 +185,25 @@ namespace pNetworkStack.Server
 		private void ReadCallback(IAsyncResult ar)
 		{
 			// Retrieve our ClientData from our async object
-			ClientData data = (ClientData)ar.AsyncState;
+			ClientData client = (ClientData)ar.AsyncState;
 
 			try
 			{
-				Socket handler = data.WorkClient;
+				Socket handler = client.WorkClient;
 
 				// Get the amount of data
 				int bytesToRead = handler.EndReceive(ar);
 
-				// Check if there is any data to process
-				if (bytesToRead > 0)
-				{
-					if (data.PushData(data.Buffer, bytesToRead))
-					{
-						Packet p = data.PopPacket();
-						p.Command.AddSender(data.UserData);
-
-						CommandHandler.GetHandler().ExecuteServerCommand(p.Command);
-
-						data.ClearData();
-						data.Buffer = new byte[ClientData.BufferSize];
-					}
-				}
+				Util.ProcessData(ref client, bytesToRead, true,
+					(cmd) => { CommandHandler.GetHandler().ExecuteServerCommand(cmd); });
 
 				// Start receiving again
-				handler.BeginReceive(data.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, data);
+				handler.BeginReceive(client.Buffer, 0, ClientData.BufferSize, 0, ReadCallback, client);
 			}
 			catch (SocketException e)
 			{
 				// Assume the client has lost connection
-				DisconnectClient(data.UserData.UUID);
+				DisconnectClient(client.UserData.UUID);
 			}
 		}
 
@@ -236,22 +222,15 @@ namespace pNetworkStack.Server
 				client = client ?? ClientInit.Values.FirstOrDefault(x => Equals(x.RemoteEndPoint, source));
 				client = client ?? AddClientQueue.FirstOrDefault(x => Equals(x.Item2.RemoteEndPoint, source))?.Item2;
 
-				if (client != null && bytesToRead > 0)
+				// If the client has not yet been registered then we ignore their first packet and register the new client
+				if (client != null)
 				{
-					if (client.PushData(data, bytesToRead))
-					{
-						Packet p = client.PopPacket();
-						p.Command.AddSender(client.UserData);
+					client.Buffer = data;
 
-						CommandHandler.GetHandler().ExecuteServerCommand(p.Command);
-
-						client.ClearData();
-						client.Buffer = new byte[ClientData.BufferSize];
-					}
+					Util.ProcessData(ref client, bytesToRead, true,
+						(cmd) => { CommandHandler.GetHandler().ExecuteServerCommand(cmd); });
 				}
-				
-				// Check if client exists and if we initialize a new one else we process the packet like normal
-				if (client == null)
+				else
 				{
 					client = new ClientData
 					{
@@ -265,7 +244,8 @@ namespace pNetworkStack.Server
 
 				// Start receiving again
 				listener.BeginReceive(ReadCallbackUDP, listener);
-			} catch (Exception e)
+			}
+			catch (Exception e)
 			{
 				Debugger.Log(e.Message, LogType.Error);
 			}

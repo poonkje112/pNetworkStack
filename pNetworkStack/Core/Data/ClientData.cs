@@ -81,6 +81,7 @@ namespace pNetworkStack.Core.Data
 		public void ClearData()
 		{
 			Data = null;
+			Buffer = new byte[BufferSize];
 		}
 
 		public Packet PopPacket()

@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using pNetworkStack.Commands;
 using pNetworkStack.Core.Data;
 
 namespace pNetworkStack.Core
@@ -66,7 +67,7 @@ namespace pNetworkStack.Core
 			// The first element is always the command
 			string command = data[0];
 			data.RemoveAt(0);
-			
+
 			// The all other elements are parameters so add this as a string array
 			param.Add(data.ToArray());
 
@@ -78,7 +79,7 @@ namespace pNetworkStack.Core
 		{
 			// Convert the string to an IPEndPoint
 			IPEndPoint ipEndPoint = null;
-			
+
 			// Check if the string is a valid IPEndPoint
 			if (IPAddress.TryParse(endPoint, out IPAddress ipAddress))
 			{
@@ -92,8 +93,8 @@ namespace pNetworkStack.Core
 
 			return ipEndPoint;
 		}
-		
-				
+
+
 		// TODO Implement compression and decompression
 		internal static byte[] Compress(byte[] data)
 		{
@@ -104,7 +105,7 @@ namespace pNetworkStack.Core
 		{
 			return data;
 		}
-		
+
 		internal static string SafeString(string data)
 		{
 			// Escape the command to prevent injection
@@ -123,7 +124,7 @@ namespace pNetworkStack.Core
 				return null;
 
 			byte[] result = null;
-			
+
 			// Convert the object to bytes
 			BinaryFormatter bf = new BinaryFormatter();
 			using (MemoryStream ms = new MemoryStream())
@@ -134,8 +135,8 @@ namespace pNetworkStack.Core
 
 			return result;
 		}
-		
-		internal static T ConvertBytesToObject<T>(byte[] data) 
+
+		internal static T ConvertBytesToObject<T>(byte[] data)
 		{
 			// Return the object from the bytes
 			BinaryFormatter bf = new BinaryFormatter();
@@ -144,7 +145,7 @@ namespace pNetworkStack.Core
 				return (T)bf.Deserialize(ms);
 			}
 		}
-		
+
 		/// <summary>
 		/// This finds the exact match of bytes in the source and returns it starting index
 		/// </summary>
@@ -156,13 +157,13 @@ namespace pNetworkStack.Core
 		{
 			int index = -1;
 			bool found = false;
-			
+
 			for (int i = startIndex; i < source.Length; i++)
 			{
-				if(i + part.Length > source.Length)
+				if (i + part.Length > source.Length)
 					break;
-				
-				for(int j = 0; j < part.Length; j++)
+
+				for (int j = 0; j < part.Length; j++)
 				{
 					if (source[i + j] == part[j])
 					{
@@ -181,6 +182,31 @@ namespace pNetworkStack.Core
 			}
 
 			return index;
+		}
+
+		internal static void ProcessData(ref ClientData client, int bytesToRead, Action<Command> callback)
+		{
+			ProcessData(ref client, bytesToRead, false, callback);
+		}
+		
+		internal static void ProcessData(ref ClientData client, int bytesToRead, bool addSender, Action<Command> callback)
+		{
+			// Check if there is any data to process
+			if (bytesToRead > 0)
+			{
+				if (client.PushData(client.Buffer, bytesToRead))
+				{
+					Packet p = client.PopPacket();
+					
+					if(addSender)
+						p.Command.AddSender(client.UserData);
+
+					callback.Invoke(p.Command);
+
+					client.ClearData();
+					client.Buffer = new byte[ClientData.BufferSize];
+				}
+			}
 		}
 	}
 }

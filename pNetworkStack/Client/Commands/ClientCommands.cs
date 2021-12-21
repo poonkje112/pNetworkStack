@@ -35,10 +35,6 @@ namespace pNetworkStack.client.Commands
 			Client.GetCurrent().OurUser.UUID = uid;
 
 			Packet p = new Packet($"pl_init {JsonConvert.SerializeObject(Client.GetCurrent().OurUser)}");
-			byte[] data = p.SerializePacket();
-			Debugger.Log(data.Length.ToString());
-			
-			
 			Client.GetCurrent().Send(p);
 		}
 
